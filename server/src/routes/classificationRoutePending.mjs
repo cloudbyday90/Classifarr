@@ -102,7 +102,6 @@ export function registerPendingRoutes(router, { db, clarificationService, classi
       answerPayload,
       resolveActor(req),
       {
-        allowBigintHistoryId: true,
         authenticated: Boolean(req.user || req.apiKey),
         ...(Number.isInteger(Number(req.user?.id)) && Number(req.user.id) > 0
           ? { operatorAuditActorId: Number(req.user.id) }

@@ -110,7 +110,7 @@ describe('discordPolicyQuestionAnswerHandler', () => {
         destination_library_id: 7,
       },
       'operator',
-      { authenticated: true, allowBigintHistoryId: true, discordMessageId: messageId },
+      { authenticated: true, discordMessageId: messageId },
     );
     expect(mockRouting.routeAfterClarification).not.toHaveBeenCalled();
     expect(currentInteraction.editReply).toHaveBeenCalledWith(expect.objectContaining({

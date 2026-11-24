@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, jest, tes
 import { getPool } from './setup.mjs';
 import { createReadinessDatabase } from '../helpers/readinessDatabase.mjs';
 import { normalizePolicyRuntimeQuestion } from '../../services/policyRuntimeQuestionNormalizer.mjs';
-import { buildPolicyRuntimeQuestionAnswerContract, parsePolicyRuntimeQuestionAnswer } from '../../services/policyRuntimeQuestionAnswerContract.mjs';
+import { buildPolicyRuntimeQuestionAnswerContract } from '../../services/policyRuntimeQuestionAnswerContract.mjs';
 
 let database;
 // Real production transaction factory; connect only to this suite's disposable database.
@@ -14,7 +14,7 @@ jest.unstable_mockModule('../../services/classification.mjs', () => ({ classific
 jest.unstable_mockModule('../../services/embeddingService.mjs', () => ({ embeddingService: { generateAndStore: jest.fn() } }));
 const { AIResponseParser } = await import('../../services/aiResponseParser.mjs');
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
-const { resolvePolicyQuestion } = await import('../../services/clarificationPolicyResolution.mjs');
+const { resolveRuntimeQuestionInTransaction } = await import('../../services/clarificationPolicyResolution.mjs');
 const { buildAiUnavailableResult, resolveAiUnavailableResult } = await import('../../services/classificationPathServiceShared.mjs');
 const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
 const { buildPendingRetryResult } = await import('../../services/classificationAiFailureUtils.mjs');
@@ -54,13 +54,14 @@ describe('fresh generic unresolved lifecycle', () => {
     expect(row).toMatchObject({ status: 'awaiting_decision', library_id: null, library_name: null });
     const contract = buildPolicyRuntimeQuestionAnswerContract({ classification: row, question: row.policy_question });
     expect(contract.recommendation.leading_destination).toBeNull();
-    const parsed = parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version, contract_fingerprint: contract.fingerprint,
-      action_id: 'confirm_destination', destination_library_id: libraries[0].id });
-    expect(parsed.ok).toBe(true);
-    return { row, answer: parsed.answer };
+    const answer = { contract_version: contract.version, contract_fingerprint: contract.fingerprint,
+      action_id: 'confirm_destination', destination_library_id: libraries[0].id };
+    return { row, answer };
   }
-  const resolve = (row, answer, policyContext = context) => resolvePolicyQuestion(row.id, answer.destinationLibraryId,
-    null, 'owned-operator', false, { policyQuestionContext: policyContext, answerContract: answer });
+  const resolve = async (row, answer, policyContext = context) => {
+    const { resolution } = await resolveRuntimeQuestionInTransaction(row.id, answer, 'owned-operator', { policyQuestionContext: policyContext });
+    return resolution;
+  };
 
   test.each(['recovery', null, 'Invalid narrative response', 'CLARIFY|Ambiguous|Insufficient support|Choose?|1|2',
     JSON.stringify({ decision: 'CLARIFY', problem_summary: 'Ambiguous', why_uncertain: 'Insufficient support',
@@ -72,7 +73,7 @@ describe('fresh generic unresolved lifecycle', () => {
     const saved = (await getPool().query('SELECT * FROM classification_history WHERE id=$1', [row.id])).rows[0];
     expect(saved).toMatchObject({ status: 'completed', library_id: libraries[0].id, policy_question: null });
     expect(await resolve(row, answer)).toMatchObject({ alreadyResolved: true, idempotent: true, shouldRoute: false });
-    await expect(resolve(row, { ...answer, contractFingerprint: 'different-receipt' })).rejects.toMatchObject({ statusCode: 409 });
+    await expect(resolve(row, { ...answer, contract_fingerprint: 'different-receipt' })).rejects.toMatchObject({ statusCode: 409 });
   });
 
   test.each(['recovery', 'Invalid narrative response'])('stale question and inactive destination refuse without completing the pending row: %s', async source => {

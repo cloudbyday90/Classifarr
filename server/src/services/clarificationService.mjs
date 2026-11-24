@@ -2,13 +2,8 @@ import * as policyQuestionContext from '../utils/policyQuestionContext.mjs';
 import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
 import { getAllQuestions, createQuestion, updateQuestion, deleteQuestion, matchQuestions, hasLanguagePresets as _hasLanguagePresets, isLanguageQuestionAllowed as _isLanguageQuestionAllowed } from './clarificationQuestionManager.mjs';
 import { getThresholds, getTierForConfidence, getTierFromPolicyThresholds, isRequireAllConfirmationsEnabled, updateThreshold, getResponses } from './clarificationThresholdManager.mjs';
-import { resolvePolicyQuestion as _resolvePolicyQuestion } from './clarificationPolicyResolution.mjs';
+import { resolveRuntimeQuestionInTransaction } from './clarificationPolicyResolution.mjs';
 import { createSeedIntegrityState, invalidateSeedIntegrityCache, getSeedIntegritySummary, auditSeedIntegrity, getPendingClassifications } from './clarificationPendingQueries.mjs';
-import {
-  POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS,
-  isPolicyRuntimeQuestionResolutionAction,
-  parsePolicyRuntimeQuestionAnswer,
-} from './policyRuntimeQuestionAnswerContract.mjs';
 import {
   policyRuntimeDestinationEvidenceCommandService,
 } from './policyRuntimeDestinationEvidenceCommandService.mjs';
@@ -96,43 +91,18 @@ class ClarificationService {
     });
   }
 
-  async resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true, {
-    discordMessageId,
-  } = {}) {
-    return _resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule, {
-      policyQuestionContext: this.policyQuestionContext,
-      discordMessageId,
-    });
-  }
-
   async resolveRuntimeQuestionAnswer(
     classificationId,
     payload,
     resolvedBy,
-    { authenticated = false, operatorAuditActorId = null, allowBigintHistoryId = false, discordMessageId } = {},
+    { authenticated = false, operatorAuditActorId = null, discordMessageId } = {},
   ) {
-    const parsed = parsePolicyRuntimeQuestionAnswer(payload);
-    if (!parsed.ok) {
-      throw createStatusError('Invalid policy question answer', 400, parsed.reason);
-    }
-    if (!isPolicyRuntimeQuestionResolutionAction(parsed.answer.actionId)) {
-      throw createStatusError(
-        'This action cannot resolve a policy question',
-        400,
-        POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.ACTION_UNAVAILABLE,
-      );
-    }
-
-    const resolution = await _resolvePolicyQuestion(
+    const { resolution, answerActionId } = await resolveRuntimeQuestionInTransaction(
       classificationId,
-      parsed.answer.destinationLibraryId,
-      null,
+      payload,
       resolvedBy,
-      false,
       {
         policyQuestionContext: this.policyQuestionContext,
-        answerContract: parsed.answer,
-        allowBigintHistoryId,
         discordMessageId,
         runtimeDestinationEvidenceCommandService: this.runtimeDestinationEvidenceCommandService,
         runtimeDestinationEvidenceAuthorizationContext:
@@ -146,10 +116,10 @@ class ClarificationService {
     );
 
     const automaticExactItemMemory = await this.runtimeExactItemMemoryAutoLearningService.record({
-      classificationId,
+      classificationId: resolution.classificationId,
       actorId: resolvedBy,
       authenticated,
-      answerActionId: parsed.answer.actionId,
+      answerActionId,
       resolutionSucceeded: resolution?.success === true,
     });
 

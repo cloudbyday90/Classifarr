@@ -44,6 +44,7 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => c
 jest.unstable_mockModule('../utils/metadataNormalization.mjs', () => createMockModule(mockMetadataNormalization));
 
 const { clarificationService: svc } = await import('../services/clarificationService.mjs');
+const { resolveRuntimeQuestionInTransaction } = await import('../services/clarificationPolicyResolution.mjs');
 const db = mockDb;
 const mockLogger = loggerModuleMock.logger;
 const classificationOutcomeService = mockClassificationOutcomeService;
@@ -637,39 +638,43 @@ describe('getPendingClassifications', () => {
     });
 });
 
-describe('resolvePolicyQuestion', () => {
-    test.each(['01', '1x', '9007199254740993', Number.MAX_SAFE_INTEGER + 1])('refuses invalid ID %p before shared transaction work', async id => {
-        const answer = {
-            contract_version: 'policy.runtime_question_answer.v1',
-            contract_fingerprint: 'current-contract-fingerprint',
-            action_id: 'confirm_destination',
-            destination_library_id: 5,
-        };
-        await expect(svc.resolvePolicyQuestion(id, 5, 'opt', 'admin')).rejects.toMatchObject({ statusCode: 400 });
-        await expect(svc.resolveRuntimeQuestionAnswer(id, answer, 'admin')).rejects.toMatchObject({ statusCode: 400 });
-        expect(db.pool.connect).not.toHaveBeenCalled();
-    });
-    test('resolves successfully when classification is awaiting_decision', async () => {
+const confirmation = {
+    contract_version: 'policy.runtime_question_answer.v1',
+    contract_fingerprint: 'current-contract-fingerprint',
+    action_id: 'confirm_destination',
+    destination_library_id: 5,
+};
+
+describe('resolveRuntimeQuestionAnswer', () => {
+    test.each(['01', '1x', '9223372036854775808', Number.MAX_SAFE_INTEGER + 1])(
+        'refuses invalid ID %p before shared transaction work', async id => {
+            await expect(svc.resolveRuntimeQuestionAnswer(id, confirmation, 'admin'))
+                .rejects.toMatchObject({ statusCode: 400, code: 'invalid_classification_id' });
+            expect(db.pool.connect).not.toHaveBeenCalled();
+        },
+    );
+
+    test.each([undefined, { library_id: 5, selected_option: 'Movies' }, { ...confirmation, contract_fingerprint: '' }])(
+        'refuses a missing or invalid command %p at the transaction boundary', async payload => {
+            await expect(resolveRuntimeQuestionInTransaction(1, payload, 'admin'))
+                .rejects.toMatchObject({ statusCode: 400 });
+            expect(db.pool.connect).not.toHaveBeenCalled();
+        },
+    );
+
+    test('admits the BIGINT maximum without an opt-in flag', async () => {
+        const id = '9223372036854775807';
         const client = makeMockClient();
         db.pool.connect.mockResolvedValueOnce(client);
-        const classification = {
-            id: 1, status: 'awaiting_decision',
-            library_id: null, library_name: 'Movies',
-            media_type: 'movie', metadata: null, policy_question: null
-        };
         client.query
             .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({ rows: [classification] })
-            .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', arr_type: 'radarr', media_type: 'movie', is_active: true }] })
-            .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({});
-        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({ updated: true });
-        const result = await svc.resolvePolicyQuestion(1, 5, 'option_a', 'adminUser');
-        expect(result.success).toBe(true);
-        expect(result.libraryId).toBe(5);
-        expect(result.shouldRoute).toBe(true);
-        expect(client.query).toHaveBeenCalledWith('COMMIT');
-        expect(client.release).toHaveBeenCalled();
+            .mockResolvedValueOnce(createDbRowsResult())
+            .mockResolvedValueOnce({ rows: [{ id: 5 }] })
+            .mockResolvedValueOnce(createDbRowsResult());
+        await expect(svc.resolveRuntimeQuestionAnswer(id, confirmation, 'admin'))
+            .rejects.toMatchObject({ statusCode: 404 });
+        expect(client.query).toHaveBeenCalledWith(expect.stringContaining('FOR UPDATE'), [id]);
+        expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
 
     test('throws 404 when classification does not exist', async () => {
@@ -680,25 +685,25 @@ describe('resolvePolicyQuestion', () => {
             .mockResolvedValueOnce(createDbRowsResult())
             .mockResolvedValueOnce({ rows: [{ id: 5 }] })
             .mockResolvedValueOnce(createDbRowsResult());
-        await expect(svc.resolvePolicyQuestion(999, 5, 'opt', 'admin'))
+        await expect(svc.resolveRuntimeQuestionAnswer(999, confirmation, 'admin'))
             .rejects.toThrow('Classification not found');
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
         expect(client.release).toHaveBeenCalled();
     });
 
-    test('returns alreadyResolved=true when status is completed with same library', async () => {
+    test('refuses a same-library completed row without an answer receipt', async () => {
         const client = makeMockClient();
         db.pool.connect.mockResolvedValueOnce(client);
         client.query
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce(createDbRowsResult())
             .mockResolvedValueOnce({ rows: [{ id: 5 }] })
-            .mockResolvedValueOnce({ rows: [{ status: 'completed', library_id: '5', library_name: 'Movies' }] })
-            .mockResolvedValueOnce({});
-        const result = await svc.resolvePolicyQuestion(1, 5, 'opt', 'admin');
-        expect(result.alreadyResolved).toBe(true);
-        expect(result.success).toBe(true);
-        expect(client.query).toHaveBeenCalledWith('COMMIT');
+            .mockResolvedValueOnce({ rows: [{ status: 'completed', library_id: '5', library_name: 'Movies' }] });
+        await expect(svc.resolveRuntimeQuestionAnswer(1, confirmation, 'admin'))
+            .rejects.toMatchObject({ statusCode: 409 });
+        expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+        expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
+        expect(runtimeExactItemMemoryAutoLearningService.record).not.toHaveBeenCalled();
     });
 
     test('replays only the exact completed runtime-question answer idempotently', async () => {
@@ -941,7 +946,7 @@ describe('resolvePolicyQuestion', () => {
             .mockResolvedValueOnce(createDbRowsResult())
             .mockResolvedValueOnce({ rows: [{ id: 5 }] })
             .mockResolvedValueOnce({ rows: [{ status: 'pending_retry', library_id: '99', library_name: 'Other' }] });
-        await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))
+        await expect(svc.resolveRuntimeQuestionAnswer(1, confirmation, 'admin'))
             .rejects.toThrow('Classification is no longer awaiting decision');
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
@@ -953,7 +958,7 @@ describe('resolvePolicyQuestion', () => {
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce({ rows: [{ id: 1, status: 'awaiting_decision', media_type: 'movie', policy_question: null, metadata: null, library_name: 'M' }] })
             .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', arr_type: 'radarr', media_type: 'movie', is_active: false }] });
-        await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))
+        await expect(svc.resolveRuntimeQuestionAnswer(1, confirmation, 'admin'))
             .rejects.toThrow('Selected library is inactive');
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
@@ -965,7 +970,7 @@ describe('resolvePolicyQuestion', () => {
             .mockResolvedValueOnce({})
             .mockResolvedValueOnce({ rows: [{ id: 1, status: 'awaiting_decision', media_type: 'movie', policy_question: null, metadata: null, library_name: 'M' }] })
             .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Shows', arr_type: 'sonarr', media_type: 'show', is_active: true }] });
-        await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))
+        await expect(svc.resolveRuntimeQuestionAnswer(1, confirmation, 'admin'))
             .rejects.toThrow('not valid for this media type');
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
@@ -995,7 +1000,7 @@ describe('resolvePolicyQuestion', () => {
         policyQuestionContext.extractQuestionContext.mockReturnValueOnce({ version: 1 });
         policyQuestionContext.getPolicyQuestionContextVersion.mockResolvedValueOnce(2);
         policyQuestionContext.isPolicyQuestionStale.mockReturnValueOnce(true);
-        await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))
+        await expect(svc.resolveRuntimeQuestionAnswer(1, confirmation, 'admin'))
             .rejects.toThrow('Policy question is stale');
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
@@ -1015,72 +1020,9 @@ describe('resolvePolicyQuestion', () => {
             }] })
             .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] });
 
-        await expect(svc.resolvePolicyQuestion(1, 5, 'opt', 'admin'))
+        await expect(svc.resolveRuntimeQuestionAnswer(1, confirmation, 'admin'))
             .rejects.toThrow('Policy question must be refreshed');
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
 
-    test('records an outcome-only learning decision when legacy rule generation is requested', async () => {
-        const client = makeMockClient();
-        db.pool.connect.mockResolvedValueOnce(client);
-        const classification = {
-            id: 1, status: 'awaiting_decision',
-            library_name: 'Movies', media_type: 'movie',
-            metadata: JSON.stringify({ tmdb_id: 12345, genres: ['Action'] }),
-            policy_question: null
-        };
-        client.query
-            .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({ rows: [classification] })
-            .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] })
-            .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({});
-        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({ updated: true });
-        const result = await svc.resolvePolicyQuestion(1, 5, 'opt', 'admin', true);
-        expect(result.generatedPattern).toBeNull();
-        expect(result.runtimeResolutionLearning).toEqual(expect.objectContaining({
-            statusId: 'outcome_only',
-            decision: expect.objectContaining({
-                decisionId: 'outcome_only',
-                canWriteLearning: false,
-            }),
-            reasonCodes: expect.arrayContaining([
-                'runtime_resolution_legacy_rule_generation_blocked',
-            ]),
-        }));
-        expect(classificationOutcomeService.recordOutcome).toHaveBeenCalledWith(
-            1,
-            expect.objectContaining({
-                type: 'resolved',
-                runtime_resolution_learning: expect.objectContaining({
-                    status_id: 'outcome_only',
-                    decision: expect.objectContaining({
-                        can_write_learning: false,
-                    }),
-                }),
-            }),
-            { client },
-        );
-    });
-
-    test('does not generate pattern when generateRule=false', async () => {
-        const client = makeMockClient();
-        db.pool.connect.mockResolvedValueOnce(client);
-        const classification = {
-            id: 1, status: 'awaiting_decision',
-            library_name: 'Movies', media_type: 'movie',
-            metadata: JSON.stringify({ tmdb_id: 12345 }),
-            policy_question: null
-        };
-        client.query
-            .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({ rows: [classification] })
-            .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] })
-            .mockResolvedValueOnce({})
-            .mockResolvedValueOnce({});
-        classificationOutcomeService.recordOutcome.mockResolvedValueOnce({ updated: true });
-        const result = await svc.resolvePolicyQuestion(1, 5, 'opt', 'admin', false);
-        expect(result.generatedPattern).toBeNull();
-        expect(result.runtimeResolutionLearning.statusId).toBe('outcome_only');
-    });
 });

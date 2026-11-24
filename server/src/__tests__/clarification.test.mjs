@@ -28,6 +28,8 @@ import {
 import {
   buildPolicyRuntimeQuestionReductionFromRuntimeInput,
 } from '../services/policyRuntimeQuestionReduction.mjs';
+import { buildPolicyRuntimeQuestionAnswerContract } from '../services/policyRuntimeQuestionAnswerContract.mjs';
+import { normalizePolicyRuntimeQuestion } from '../services/policyRuntimeQuestionNormalizer.mjs';
 
 const mockDb = createTransactionalDbMock();
 const mockLogger = createMockLogger();
@@ -45,6 +47,18 @@ jest.unstable_mockModule('../services/classificationOutcomeService.mjs', () => c
 const db = mockDb;
 const classificationOutcomeService = mockClassificationOutcomeService;
 const { clarificationService } = await import('../services/clarificationService.mjs');
+
+function confirmationPayload(destinationId, classification) {
+  const contract = classification && buildPolicyRuntimeQuestionAnswerContract({
+    classification, question: classification.policy_question,
+  });
+  return {
+    contract_version: contract?.version || 'policy.runtime_question_answer.v1',
+    contract_fingerprint: contract?.fingerprint || 'current-contract-fingerprint',
+    action_id: 'confirm_destination',
+    destination_library_id: destinationId,
+  };
+}
 
 function getRequiredBindCount(sql) {
   if (typeof sql !== 'string') return 0;
@@ -487,7 +501,7 @@ describe('ClarificationService', () => {
     });
   });
 
-  describe('resolvePolicyQuestion - v0.39.7b Bug Fix', () => {
+  describe('saved question resolution', () => {
     test('requires refresh for a legacy question even when metadata is JSONB', async () => {
       const mockClassification = {
         id: 1,
@@ -514,12 +528,10 @@ describe('ClarificationService', () => {
 
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      await expect(clarificationService.resolvePolicyQuestion(
+      await expect(clarificationService.resolveRuntimeQuestionAnswer(
         1,
-        2,
-        'Yes',
+        confirmationPayload(2),
         'test-user',
-        true
       )).rejects.toMatchObject({
         statusCode: 409,
         code: 'policy_question_normalization_required',
@@ -559,12 +571,10 @@ describe('ClarificationService', () => {
 
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      await expect(clarificationService.resolvePolicyQuestion(
-        1, // classificationId
-        2, // selectedLibraryId
-        'No', // selectedOption
+      await expect(clarificationService.resolveRuntimeQuestionAnswer(
+        1,
+        confirmationPayload(2),
         'test-user',
-        true // generateRule
       )).rejects.toMatchObject({
         statusCode: 409,
         code: 'policy_question_normalization_required',
@@ -610,21 +620,20 @@ describe('ClarificationService', () => {
           .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
           .mockResolvedValueOnce({ rows: [{ context_version: null }] }) // Question context
           .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
+          .mockResolvedValueOnce(createDbRowsResult()) // evaluation timestamp
           .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
         release: jest.fn(),
       };
 
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      await expect(clarificationService.resolvePolicyQuestion(
+      await expect(clarificationService.resolveRuntimeQuestionAnswer(
         1,
-        2,
-        'Resolve current item',
+        confirmationPayload(2, mockClassification),
         'test-user',
-        true,
       )).rejects.toMatchObject({
         statusCode: 409,
-        code: 'native_policy_question_invalid',
+        code: 'invalid_runtime_question_answer_question',
       });
       expect(mockClient.query.mock.calls.some(([sql]) =>
         typeof sql === 'string' && sql.includes('INSERT INTO classification_evidence')
@@ -682,12 +691,10 @@ describe('ClarificationService', () => {
 
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      const result = await clarificationService.resolvePolicyQuestion(
+      const result = await clarificationService.resolveRuntimeQuestionAnswer(
         1,
-        2,
-        'Resolve current item',
+        confirmationPayload(2, mockClassification),
         'test-user',
-        false,
       );
 
       expect(result.nativeResolutionProvenance).toEqual(expect.objectContaining({
@@ -752,332 +759,76 @@ describe('ClarificationService', () => {
 
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      await expect(clarificationService.resolvePolicyQuestion(
-        1, // classificationId
-        2, // selectedLibraryId
-        'No', // selectedOption
+      await expect(clarificationService.resolveRuntimeQuestionAnswer(
+        1,
+        confirmationPayload(2),
         'test-user',
-        true // generateRule
       )).rejects.toMatchObject({
         statusCode: 409,
         code: 'policy_question_normalization_required',
       });
     });
 
-    test('records a null policy question as outcome-only without direct evidence writes', async () => {
-      const mockClassification = {
-        id: 1,
-        title: 'Test Movie',
-        media_type: 'movie',
-        library_name: 'Movies',
-        policy_question: null,
-        metadata: JSON.stringify({
-          tmdb_id: 12345,
-          title: 'Test Movie'
-        })
-      };
-
-      // Mock the client for transaction
+    test.each([null, '[object Object]'])('refuses missing or unreadable saved question %p', async policyQuestion => {
+      const classification = { id: 1, media_type: 'movie', policy_question: policyQuestion };
       const mockClient = {
-        query: jest.fn()
-          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
-          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
-          .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
-          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
-        release: jest.fn()
+        query: createStrictQueryMock([
+          createDbRowsResult(), { rows: [classification] },
+          { rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] },
+          createDbRowsResult(),
+        ]),
+        release: jest.fn(),
       };
-
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      const result = await clarificationService.resolvePolicyQuestion(
-        1,
-        2,
-        'Option',
-        'test-user',
-        true
-      );
-
-      expect(result.success).toBe(true);
-      
-      expect(result.runtimeResolutionLearning).toEqual(expect.objectContaining({
-        statusId: 'outcome_only',
-        decision: expect.objectContaining({ canWriteLearning: false }),
-      }));
-      expect(mockClient.query.mock.calls.some(([sql]) =>
-        typeof sql === 'string' && sql.includes('classification_evidence')
-      )).toBe(false);
-    });
-
-    test('records an invalid policy-question string as outcome-only without direct evidence writes', async () => {
-      const mockClassification = {
-        id: 1,
-        title: 'Test Movie',
-        media_type: 'movie',
-        library_name: 'Movies',
-        policy_question: '[object Object]',
-        metadata: JSON.stringify({
-          tmdb_id: 12345,
-          title: 'Test Movie'
-        })
-      };
-
-      const mockClient = {
-        query: jest.fn()
-          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
-          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
-          .mockResolvedValueOnce({ rows: [{ id: 2, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification
-          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
-        release: jest.fn()
-      };
-
-      db.pool.connect.mockResolvedValueOnce(mockClient);
-
-      const result = await clarificationService.resolvePolicyQuestion(
-        1,
-        2,
-        'Option',
-        'test-user',
-        true
-      );
-
-      expect(result.success).toBe(true);
-
-      expect(result.runtimeResolutionLearning).toEqual(expect.objectContaining({
-        statusId: 'outcome_only',
-        decision: expect.objectContaining({ canWriteLearning: false }),
-      }));
-      expect(mockClient.query.mock.calls.some(([sql]) =>
-        typeof sql === 'string' && sql.includes('classification_evidence')
-      )).toBe(false);
+      await expect(clarificationService.resolveRuntimeQuestionAnswer(1, confirmationPayload(2), 'test-user'))
+        .rejects.toMatchObject({ statusCode: 409, code: 'invalid_runtime_question_answer_question' });
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
     });
   });
 
-  describe('resolvePolicyQuestion - outcome-only learning boundary', () => {
-    test('validates SQL bind counts across the successful outcome-only resolution path', async () => {
-      const mockClassification = {
+  describe('contract resolution outcome-only learning boundary', () => {
+    test.each([
+      ['a genre list', ['Documentary', 'Family']],
+      ['one genre', ['Documentary']],
+      ['genre objects', [{ id: 99, name: 'Documentary' }, { id: 10751, name: 'Family' }]],
+      ['no genres', undefined],
+    ])('records a contract outcome without direct evidence or pattern writes for %s', async (_label, genres) => {
+      const library = { id: 5, name: 'Movies', media_type: 'movie', is_active: true };
+      const question = normalizePolicyRuntimeQuestion({
+        metadata: { media_type: 'movie' }, libraries: [library],
+        policyResult: { ranked: [{ library_id: library.id, score: 78 }] },
+      });
+      const classification = {
         id: 1,
-        title: 'Planet Earth',
+        title: 'Nature Film',
         media_type: 'movie',
-        library_name: 'Movies',
-        policy_question: null,
-        metadata: JSON.stringify({
-          tmdb_id: 99999,
-          title: 'Planet Earth',
-          genres: ['Documentary', 'Family']
-        })
+        policy_question: question,
+        metadata: JSON.stringify({ tmdb_id: 88888, title: 'Nature Film', genres }),
       };
-
       const mockClient = {
         query: createStrictQueryMock([
           createDbRowsResult(), // BEGIN
-          { rows: [mockClassification] }, // Get classification
-          { rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }, // selected library
-          createDbRowsResult(), // UPDATE classification_history
+          { rows: [classification] },
+          { rows: [library] },
+          { rows: [{ context_version: null }] },
+          createDbRowsResult(), // UPDATE
+          createDbRowsResult(), // evaluation timestamp
           createDbRowsResult(), // COMMIT
         ]),
-        release: jest.fn()
+        release: jest.fn(),
       };
-
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
-
-      expect(result.success).toBe(true);
-      expect(result.runtimeResolutionLearning.statusId).toBe('outcome_only');
-      expect(mockClient.query).toHaveBeenCalled();
-    });
-
-    test('does not turn array-shaped genres into direct evidence writes', async () => {
-      const mockClassification = {
-        id: 1,
-        title: 'Planet Earth',
-        media_type: 'movie',
-        library_name: 'Movies',
-        policy_question: null,
-        metadata: JSON.stringify({
-          tmdb_id: 99999,
-          title: 'Planet Earth',
-          genres: ['Documentary', 'Family']
-        })
-      };
-
-      const mockClient = {
-        query: jest.fn()
-          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
-          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
-          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
-          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary)
-          .mockResolvedValueOnce({ rows: [{ id: 3 }] }) // Phase 7: INSERT classification_evidence (genre: family)
-          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
-        release: jest.fn()
-      };
-
-      db.pool.connect.mockResolvedValueOnce(mockClient);
-
-      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
-
-      expect(result.success).toBe(true);
-
-      const genreEvidenceCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
-      );
-      expect(genreEvidenceCalls).toHaveLength(0);
-      expect(result.runtimeResolutionLearning.statusId).toBe('outcome_only');
-    });
-
-    test('does not turn a single genre into a direct evidence write', async () => {
-      const mockClassification = {
-        id: 1,
-        title: 'Nature Film',
-        media_type: 'movie',
-        library_name: 'Movies',
-        policy_question: null,
-        metadata: JSON.stringify({
-          tmdb_id: 88888,
-          title: 'Nature Film',
-          genres: ['Documentary']
-        })
-      };
-
-      const mockClient = {
-        query: jest.fn()
-          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
-          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
-          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
-          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary)
-          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
-        release: jest.fn()
-      };
-
-      db.pool.connect.mockResolvedValueOnce(mockClient);
-
-      await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
-
-      const genreEvidenceCall = mockClient.query.mock.calls.find(call =>
-        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
-      );
-      expect(genreEvidenceCall).toBeUndefined();
-    });
-
-    test('does not turn object-shaped metadata genres into direct evidence writes', async () => {
-      const mockClassification = {
-        id: 1,
-        title: 'Nature Film',
-        media_type: 'movie',
-        library_name: 'Movies',
-        policy_question: null,
-        metadata: JSON.stringify({
-          tmdb_id: 88888,
-          title: 'Nature Film',
-          genres: [{ id: 99, name: 'Documentary' }, { id: 10751, name: 'Family' }]
-        })
-      };
-
-      const mockClient = {
-        query: jest.fn()
-          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
-          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
-          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
-          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary)
-          .mockResolvedValueOnce({ rows: [{ id: 3 }] }) // Phase 7: INSERT classification_evidence (genre: family)
-          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
-        release: jest.fn()
-      };
-
-      db.pool.connect.mockResolvedValueOnce(mockClient);
-
-      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
-
-      expect(result.success).toBe(true);
-
-      const genreEvidenceCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
-      );
-      expect(genreEvidenceCalls).toHaveLength(0);
-    });
-
-    test('does not use direct genre writes for a previously observed genre', async () => {
-      const mockClassification = {
-        id: 1,
-        title: 'Nature Film',
-        media_type: 'movie',
-        library_name: 'Movies',
-        policy_question: null,
-        metadata: JSON.stringify({
-          tmdb_id: 88888,
-          title: 'Nature Film',
-          genres: ['Documentary']
-        })
-      };
-
-      const mockClient = {
-        query: jest.fn()
-          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
-          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
-          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
-          .mockResolvedValueOnce({ rows: [{ id: 1 }] }) // Phase 7: INSERT classification_evidence (item_exact)
-          .mockResolvedValueOnce({ rows: [{ id: 2 }] }) // Phase 7: INSERT classification_evidence (genre: documentary) — always upserts, no duplication
-          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
-        release: jest.fn()
-      };
-
-      db.pool.connect.mockResolvedValueOnce(mockClient);
-
-      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
-
-      expect(result.success).toBe(true);
-
-      const genreEvidenceCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].includes('INSERT INTO classification_evidence') && call[1] && call[1][0] === 'genre'
-      );
-      expect(genreEvidenceCalls).toHaveLength(0);
-    });
-
-    test('skips genre_pattern INSERTs when metadata has no genres', async () => {
-      const mockClassification = {
-        id: 1,
-        title: 'Test Movie',
-        media_type: 'movie',
-        library_name: 'Movies',
-        policy_question: null,
-        metadata: JSON.stringify({ tmdb_id: 77777, title: 'Test Movie' })
-      };
-
-      const mockClient = {
-        query: jest.fn()
-          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
-          .mockResolvedValueOnce({ rows: [mockClassification] }) // Get classification
-          .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] }) // selected library
-          .mockResolvedValueOnce(createDbRowsResult()) // UPDATE classification_history
-          .mockResolvedValueOnce({
-            rows: [{ id: 1, tmdb_id: 77777, library_id: 5, pattern_type: 'exact_match', confidence: 100 }]
-          }) // INSERT exact_match
-          .mockResolvedValueOnce(createDbRowsResult()) // Phase 3 shadow-write: item_exact (classification_evidence)
-          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
-        release: jest.fn()
-      };
-
-      db.pool.connect.mockResolvedValueOnce(mockClient);
-
-      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
-
-      expect(result.success).toBe(true);
-
-      const genrePatternCalls = mockClient.query.mock.calls.filter(call =>
-        call[0] && call[0].includes('genre_pattern')
-      );
-      expect(genrePatternCalls).toHaveLength(0);
+      const result = await clarificationService.resolveRuntimeQuestionAnswer(1, confirmationPayload(5, classification), 'test-user');
+      expect(result).toMatchObject({
+        success: true,
+        generatedPattern: null,
+        runtimeResolutionLearning: { statusId: 'outcome_only', decision: { canWriteLearning: false } },
+      });
+      expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+      expect(mockClient.query.mock.calls.some(([sql]) => /classification_evidence|genre_pattern/.test(sql))).toBe(false);
     });
 
     test('rejects classifications that are no longer awaiting decision', async () => {
@@ -1094,7 +845,7 @@ describe('ClarificationService', () => {
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
       await expect(
-        clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true)
+        clarificationService.resolveRuntimeQuestionAnswer(1, confirmationPayload(5), 'test-user')
       ).rejects.toMatchObject({
         message: 'Classification is no longer awaiting decision',
         statusCode: 409
@@ -1112,32 +863,21 @@ describe('ClarificationService', () => {
       expect(mockLogger.error).not.toHaveBeenCalled();
     });
 
-    test('treats duplicate resolution to the same completed library as idempotent success', async () => {
+    test('rejects same-library completed rows without a saved answer', async () => {
       const mockClient = {
-        query: jest.fn()
-          .mockResolvedValueOnce(createDbRowsResult()) // BEGIN
-          .mockResolvedValueOnce(createDbRowsResult()) // locked pending lookup
-          .mockResolvedValueOnce({ rows: [{ id: 5 }] }) // library check
-          .mockResolvedValueOnce({ rows: [{ status: 'completed', library_id: 5, library_name: 'Movies' }] }) // existence/status check
-          .mockResolvedValueOnce(createDbRowsResult()), // COMMIT
-        release: jest.fn()
+        query: createStrictQueryMock([
+          createDbRowsResult(), createDbRowsResult(), { rows: [{ id: 5 }] },
+          { rows: [{ status: 'completed', library_id: 5, library_name: 'Movies' }] },
+          createDbRowsResult(),
+        ]),
+        release: jest.fn(),
       };
-
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
-      const result = await clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'test-user', true);
-
-      expect(result).toEqual(expect.objectContaining({
-        success: true,
-        classificationId: 1,
-        libraryId: 5,
-        libraryName: 'Movies',
-        shouldRoute: false,
-        alreadyResolved: true,
-        generatedPattern: null
-      }));
-      expect(mockClient.query).toHaveBeenCalledTimes(5);
-      expect(mockLogger.error).not.toHaveBeenCalled();
+      await expect(clarificationService.resolveRuntimeQuestionAnswer(1, confirmationPayload(5), 'test-user'))
+        .rejects.toMatchObject({ statusCode: 409 });
+      expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+      expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
     });
 
     test('rejects invalid selected libraries for direct service callers', async () => {
@@ -1153,7 +893,7 @@ describe('ClarificationService', () => {
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
       await expect(
-        clarificationService.resolvePolicyQuestion(1, 999, 'Movies', 'discord-user', true)
+        clarificationService.resolveRuntimeQuestionAnswer(1, confirmationPayload(999), 'discord-user')
       ).rejects.toMatchObject({
         message: 'Invalid library_id',
         statusCode: 400
@@ -1181,7 +921,7 @@ describe('ClarificationService', () => {
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
       await expect(
-        clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'admin', true)
+        clarificationService.resolveRuntimeQuestionAnswer(1, confirmationPayload(5), 'admin')
       ).rejects.toMatchObject({
         message: 'Selected library is inactive',
         statusCode: 400,
@@ -1210,7 +950,7 @@ describe('ClarificationService', () => {
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
       await expect(
-        clarificationService.resolvePolicyQuestion(1, 5, 'TV Shows', 'admin', true)
+        clarificationService.resolveRuntimeQuestionAnswer(1, confirmationPayload(5), 'admin')
       ).rejects.toMatchObject({
         message: 'Selected library is not valid for this media type',
         statusCode: 400,
@@ -1261,11 +1001,10 @@ describe('ClarificationService', () => {
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
       await expect(
-        clarificationService.resolvePolicyQuestion(1, 6, 'Family', 'admin', true)
+        clarificationService.resolveRuntimeQuestionAnswer(1, confirmationPayload(6, mockClassification), 'admin')
       ).rejects.toMatchObject({
-        message: 'Selected library is no longer valid for this policy question',
         statusCode: 400,
-        code: 'invalid_policy_option'
+        code: 'runtime_question_answer_destination_not_candidate'
       });
     });
 
@@ -1312,7 +1051,7 @@ describe('ClarificationService', () => {
       db.pool.connect.mockResolvedValueOnce(mockClient);
 
       await expect(
-        clarificationService.resolvePolicyQuestion(1, 5, 'Movies', 'admin', true)
+        clarificationService.resolveRuntimeQuestionAnswer(1, confirmationPayload(5), 'admin')
       ).rejects.toMatchObject({
         message: 'Policy question is stale and must be retried',
         statusCode: 409,

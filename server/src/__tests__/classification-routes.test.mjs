@@ -55,7 +55,6 @@ const mockClassificationService = createServiceStubs(['routeToArr']);
 
 const mockClarificationService = createServiceStubs([
   'getPendingClassifications',
-  'resolvePolicyQuestion',
   'resolveRuntimeQuestionAnswer',
 ]);
 
@@ -163,15 +162,6 @@ describe('Classification Routes - Pending Resolution', () => {
     clarificationService.getPendingClassifications.mockReset();
     clarificationService.getPendingClassifications.mockResolvedValue([]);
     clarificationService.resolveRuntimeQuestionAnswer.mockReset();
-    clarificationService.resolveRuntimeQuestionAnswer.mockImplementation(
-      async (classificationId, answer, actor) => clarificationService.resolvePolicyQuestion(
-        classificationId,
-        answer.destination_library_id,
-        null,
-        actor,
-        false,
-      ),
-    );
     nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockReset();
     nativePendingRouteOutcomePersistence.recordNativePendingRouteOutcome.mockResolvedValue({
       persisted: false,
@@ -267,8 +257,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should resolve and route to Radarr when library has arr mapping', async () => {
-      // Mock resolvePolicyQuestion response
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValue({
         success: true,
         classificationId: 1,
         libraryId: 10,
@@ -334,7 +323,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should resolve and route to Sonarr when library has arr mapping', async () => {
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValue({
         success: true,
         classificationId: 2,
         libraryId: 20,
@@ -375,7 +364,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('persists the native successful route after routing returns', async () => {
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValue({
         success: true,
         classificationId: 31,
         libraryId: 30,
@@ -432,7 +421,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('records a native missing mapping when library lacks arr_type', async () => {
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValue({
         success: true,
         classificationId: 3,
         libraryId: 30,
@@ -494,7 +483,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should attempt routing when arr_id is missing but arr_type exists', async () => {
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValue({
         success: true,
         classificationId: 6,
         libraryId: 60,
@@ -532,7 +521,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should succeed even if routing fails', async () => {
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValue({
         success: true,
         classificationId: 4,
         libraryId: 40,
@@ -573,7 +562,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should return routing reason when routing is skipped without exception', async () => {
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValue({
         success: true,
         classificationId: 44,
         libraryId: 40,
@@ -616,7 +605,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should handle metadata as object (JSONB)', async () => {
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValue({
         success: true,
         classificationId: 5,
         libraryId: 50,
@@ -669,7 +658,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should not route when shouldRoute is false', async () => {
-      clarificationService.resolvePolicyQuestion.mockResolvedValue({
+      clarificationService.resolveRuntimeQuestionAnswer.mockResolvedValue({
         success: true,
         classificationId: 6,
         libraryId: 60,
@@ -716,12 +705,12 @@ describe('Classification Routes - Pending Resolution', () => {
           destination_library_id: 60,
         },
         'admin',
-        { authenticated: true, operatorAuditActorId: 1, allowBigintHistoryId: true },
+        { authenticated: true, operatorAuditActorId: 1 },
       );
     });
 
     test('should return service status codes for stale pending resolutions', async () => {
-      clarificationService.resolvePolicyQuestion.mockRejectedValue(
+      clarificationService.resolveRuntimeQuestionAnswer.mockRejectedValue(
         Object.assign(new Error('Classification is no longer awaiting decision'), { statusCode: 409 })
       );
 
@@ -736,7 +725,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should return 409 when the policy question is stale', async () => {
-      clarificationService.resolvePolicyQuestion.mockRejectedValue(
+      clarificationService.resolveRuntimeQuestionAnswer.mockRejectedValue(
         Object.assign(
           new Error('Policy question is stale and must be retried'),
           { statusCode: 409, code: 'policy_question_stale' }
@@ -754,7 +743,7 @@ describe('Classification Routes - Pending Resolution', () => {
     });
 
     test('should return 400 when the selected library is not a current policy option', async () => {
-      clarificationService.resolvePolicyQuestion.mockRejectedValue(
+      clarificationService.resolveRuntimeQuestionAnswer.mockRejectedValue(
         Object.assign(
           new Error('Selected library is no longer valid for this policy question'),
           { statusCode: 400, code: 'invalid_policy_option' }

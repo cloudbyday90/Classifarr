@@ -22,7 +22,7 @@ const { ClassificationPersistenceService } = await import('../../services/classi
 const { libraryProfileService } = await import('../../services/libraryProfileService.mjs');
 const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
 const { evaluateClassificationRouteSafety } = await import('../../services/classificationRouteSafetyGate.mjs');
-const { resolvePolicyQuestion } = await import('../../services/clarificationPolicyResolution.mjs');
+const { resolveRuntimeQuestionInTransaction } = await import('../../services/clarificationPolicyResolution.mjs');
 const { buildPolicyRuntimeQuestionAnswerContract, parsePolicyRuntimeQuestionAnswer } = await import('../../services/policyRuntimeQuestionAnswerContract.mjs');
 const { loadCandidateBoundVerificationDailyOutcomeMetrics } = await import('../../services/classificationCandidateBoundVerificationMetricsRepository.mjs');
 const context = { extractQuestionContext: () => ({}), getPolicyQuestionContextVersion: async () => 1,
@@ -227,8 +227,8 @@ test.each(['current B', 'original A'])('loopback HTTP %s explicit choice has sta
     const parsed = parsePolicyRuntimeQuestionAnswer(req.body);
     if (!parsed.ok) return res.status(400).json({ error: parsed.reason });
     try {
-      const outcome = await resolvePolicyQuestion(row.id, destination, null, 'owned-operator', false,
-        { policyQuestionContext: context, answerContract: parsed.answer });
+      const { resolution: outcome } = await resolveRuntimeQuestionInTransaction(row.id, req.body, 'owned-operator',
+        { policyQuestionContext: context });
       if (outcome.shouldRoute) routed(); return res.json(outcome);
     } catch (error) { return res.status(error.statusCode || 500).json({ code: error.code }); }
   });

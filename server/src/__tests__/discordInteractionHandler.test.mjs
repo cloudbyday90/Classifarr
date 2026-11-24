@@ -37,7 +37,6 @@ import { createNamedMockModule } from './helpers/mockFactory.mjs';
 
 const mockDb = { query: jest.fn(), withTransaction: async callback => callback(mockDb) };
 const mockClarificationService = {
-    resolvePolicyQuestion: jest.fn(),
     resolveRuntimeQuestionAnswer: jest.fn(),
     recordResponse: jest.fn()
 };
@@ -140,7 +139,6 @@ beforeEach(() => {
     interactions = [];
     jest.clearAllMocks();
     db.query.mockReset();
-    clarificationService.resolvePolicyQuestion.mockReset();
     clarificationService.resolveRuntimeQuestionAnswer.mockReset();
     clarificationService.recordResponse.mockReset();
     classificationRoutingService.routeToArr.mockReset();
@@ -219,7 +217,7 @@ describe('handleInteraction', () => {
             expect(clarificationService.resolveRuntimeQuestionAnswer).toHaveBeenCalledWith(id, {
                 contract_version: 'policy.runtime_question_answer.v1', contract_fingerprint: fingerprint,
                 action_id: 'confirm_destination', destination_library_id: 2147483647,
-            }, 'testUser', { authenticated: true, allowBigintHistoryId: true, discordMessageId: savedMessageId });
+            }, 'testUser', { authenticated: true, discordMessageId: savedMessageId });
             expect(interaction.customId.length).toBeLessThanOrEqual(100);
         },
     );
@@ -650,7 +648,6 @@ describe('retired clarification buttons', () => {
         }
         expect(db.query).not.toHaveBeenCalled();
         expect(clarificationService.recordResponse).not.toHaveBeenCalled();
-        expect(clarificationService.resolvePolicyQuestion).not.toHaveBeenCalled();
         expect(clarificationService.resolveRuntimeQuestionAnswer).not.toHaveBeenCalled();
         expect(classificationOutcomeService.recordOutcome).not.toHaveBeenCalled();
         expect(classificationRoutingService.routeToArr).not.toHaveBeenCalled();

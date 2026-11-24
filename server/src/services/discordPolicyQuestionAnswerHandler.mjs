@@ -104,7 +104,7 @@ export async function processPolicyQuestionAnswer(interaction) {
           destination_library_id: destinationLibraryId,
         },
         interaction.user?.username || `discord:${interaction.user?.id || 'operator'}`,
-        { authenticated: Boolean(interaction.user?.id), allowBigintHistoryId: true, discordMessageId },
+        { authenticated: Boolean(interaction.user?.id), discordMessageId },
       );
     } catch (error) {
       await sendResolutionError(interaction, error);

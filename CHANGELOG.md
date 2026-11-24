@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending question resolution** — Require a versioned answer at the shared
+  transaction boundary and use exact BIGINT History IDs throughout. Saved
+  replays keep their existing receipt checks. See the
+  [outcome](docs/architecture/contract-only-pending-resolution-outcome.md).
+
 - **Discord index-only clarification** — Old option buttons now reply privately
   with directions to the Command Center. New legacy confidence notices show
   review guidance without decision controls. See the

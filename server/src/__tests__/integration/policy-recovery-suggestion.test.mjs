@@ -32,10 +32,15 @@ const { ClassificationPolicyPathService } = await import('../../services/classif
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
 const { ensureDecisionQuestion } = await import('../../services/classificationRoutingServiceShared.mjs');
 const { policyQuestionBuilder } = await import('../../services/policyQuestionBuilder.mjs');
-const { resolvePolicyQuestion } = await import('../../services/clarificationPolicyResolution.mjs');
-const { buildPolicyRuntimeQuestionAnswerContract, parsePolicyRuntimeQuestionAnswer } = await import('../../services/policyRuntimeQuestionAnswerContract.mjs');
+const { resolveRuntimeQuestionInTransaction } = await import('../../services/clarificationPolicyResolution.mjs');
+const { buildPolicyRuntimeQuestionAnswerContract, buildPolicyRuntimeQuestionAnswerOutcome, parsePolicyRuntimeQuestionAnswer } = await import('../../services/policyRuntimeQuestionAnswerContract.mjs');
 const context = { extractQuestionContext: () => ({}), getPolicyQuestionContextVersion: async () => 1,
   stampPolicyQuestionContext: value => value, isPolicyQuestionStale: () => false };
+async function resolveQuestion(id, answer, policyQuestionContext = context) {
+  const { resolution } = await resolveRuntimeQuestionInTransaction(id, buildPolicyRuntimeQuestionAnswerOutcome(answer),
+    'owned-operator', { policyQuestionContext });
+  return resolution;
+}
 const persistence = new ClassificationPersistenceService({ policyQuestionContext: context });
 const fixtures = [], history = [];
 const logger = Object.fromEntries(['debug', 'info', 'warn', 'error'].map(level => [level, () => {}]));
@@ -109,8 +114,7 @@ test.each(['genuine', 'copied'])('%s policy recovery persists pending state and 
   const parsed = parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version, contract_fingerprint: contract.fingerprint,
     action_id: 'confirm_destination', destination_library_id: libraries[0].id });
   expect(parsed.ok).toBe(true);
-  const resolve = policyContext => resolvePolicyQuestion(id, libraries[0].id, null, 'owned-operator', false,
-    { policyQuestionContext: policyContext, answerContract: parsed.answer });
+  const resolve = policyContext => resolveQuestion(id, parsed.answer, policyContext);
   await expect(resolve({ ...context, isPolicyQuestionStale: () => true })).rejects.toMatchObject({ statusCode: 409 });
   await query('UPDATE libraries SET is_active=false WHERE id=$1', [libraries[0].id]);
   await expect(resolve(context)).rejects.toMatchObject({ statusCode: 400 });
@@ -272,8 +276,7 @@ test.each([['cap', false], ['rejected', false], ['select', false], ['cap', true]
     expect(oldContract.fingerprint).not.toBe(contract.fingerprint);
     const answer = fingerprint => parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version,
       contract_fingerprint: fingerprint, action_id: 'confirm_destination', destination_library_id: libraries[0].id }).answer;
-    const resolve = fingerprint => resolvePolicyQuestion(id, libraries[0].id, null, 'owned-operator', false,
-      { policyQuestionContext: context, answerContract: answer(fingerprint) });
+    const resolve = fingerprint => resolveQuestion(id, answer(fingerprint));
     await expect(resolve(oldContract.fingerprint)).rejects.toMatchObject({ statusCode: 409 });
     expect(await resolve(contract.fingerprint)).toMatchObject({ success: true, shouldRoute: true });
     expect(await resolve(contract.fingerprint)).toMatchObject({ idempotent: true, shouldRoute: false });
@@ -305,8 +308,7 @@ test.each([['native_intent', false], ['native_intent', true], ['compatibility_br
     expect(contract.recommendation.policy_destination).toBeNull();
     const answer = parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version, contract_fingerprint: contract.fingerprint,
       action_id: 'confirm_destination', destination_library_id: libraries[0].id }).answer;
-    const resolve = () => resolvePolicyQuestion(id, libraries[0].id, null, 'owned-operator', false,
-      { policyQuestionContext: context, answerContract: answer });
+    const resolve = () => resolveQuestion(id, answer);
     expect(await resolve()).toMatchObject({ success: true, shouldRoute: true });
     expect(await resolve()).toMatchObject({ idempotent: true, shouldRoute: false });
   });
@@ -362,8 +364,7 @@ test.each([
   expect(contract.decision_summary.deterministic.score).toBe(Math.round(result.policyResult.ranked[0].score));
   const parsed = parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version, contract_fingerprint: contract.fingerprint,
     action_id: 'confirm_destination', destination_library_id: libraries[0].id });
-  const resolve = () => resolvePolicyQuestion(id, libraries[0].id, null, 'owned-operator', false,
-    { policyQuestionContext: context, answerContract: parsed.answer });
+  const resolve = () => resolveQuestion(id, parsed.answer);
   expect(await resolve()).toMatchObject({ success: true, shouldRoute: true });
   // Manual method changes invalidate new-frame presentation, but exact receipt recovery comes first.
   expect(await resolve()).toMatchObject({ idempotent: true, shouldRoute: false });
@@ -457,8 +458,7 @@ test.each([[false, null], [true, null], [true, 'cap'], [true, 'rejected'], [true
     const parsed = parsePolicyRuntimeQuestionAnswer(req.body);
     if (!parsed.ok) return res.status(400).json({ error: parsed.reason });
     try {
-      const outcome = await resolvePolicyQuestion(id, parsed.answer.destinationLibraryId, null, 'owned-operator', false,
-        { policyQuestionContext: context, answerContract: parsed.answer });
+      const outcome = await resolveQuestion(id, parsed.answer);
       if (outcome.shouldRoute) routed();
       return res.json(outcome);
     } catch (error) { return res.status(error.statusCode || 500).json({ code: error.code }); }
@@ -531,8 +531,7 @@ test.each(['before invocation', 'after fulfillment'])('adopted proof loss %s sav
   expect(row.metadata.policyResult.ranked[0].library_id).toBe(earlier.id);
   const answer = parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version, contract_fingerprint: contract.fingerprint,
     action_id: 'confirm_destination', destination_library_id: libraries[0].id }).answer;
-  const resolve = () => resolvePolicyQuestion(id, libraries[0].id, null, 'owned-operator', false,
-    { policyQuestionContext: context, answerContract: answer });
+  const resolve = () => resolveQuestion(id, answer);
   expect(await resolve()).toMatchObject({ success: true, shouldRoute: true });
   expect(await resolve()).toMatchObject({ idempotent: true, shouldRoute: false });
 });
@@ -580,8 +579,7 @@ test.each([
     expect(oldContract.fingerprint).not.toBe(contract.fingerprint);
     const answer = fingerprint => parsePolicyRuntimeQuestionAnswer({ contract_version: contract.version,
       contract_fingerprint: fingerprint, action_id: 'confirm_destination', destination_library_id: libraries[0].id }).answer;
-    const resolve = receipt => resolvePolicyQuestion(id, libraries[0].id, null, 'owned-operator', false,
-      { policyQuestionContext: context, answerContract: receipt });
+    const resolve = receipt => resolveQuestion(id, receipt);
     await expect(resolve(answer(oldContract.fingerprint))).rejects.toMatchObject({ statusCode: 409 });
     expect((await query('SELECT status FROM classification_history WHERE id=$1', [id])).rows[0].status).toBe('awaiting_decision');
     expect(await resolve(answer(contract.fingerprint))).toMatchObject({ success: true, shouldRoute: true });

@@ -7,7 +7,7 @@ import { normalizePolicyRuntimeQuestion } from '../../services/policyRuntimeQues
 import { buildPolicyRuntimeQuestionAnswerContract, parsePolicyRuntimeQuestionAnswer } from '../../services/policyRuntimeQuestionAnswerContract.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
-const { resolvePolicyQuestion } = await import('../../services/clarificationPolicyResolution.mjs');
+const { resolveRuntimeQuestionInTransaction } = await import('../../services/clarificationPolicyResolution.mjs');
 const context = { extractQuestionContext: () => ({}), getPolicyQuestionContextVersion: async () => 1, isPolicyQuestionStale: () => false };
 let libraries, row, question, contract;
 let sequence = 0;
@@ -25,8 +25,8 @@ function app() {
     const parsed = parsePolicyRuntimeQuestionAnswer(req.body);
     if (!parsed.ok) return res.status(400).json({ error: parsed.reason });
     try {
-      const result = await resolvePolicyQuestion(row.id, parsed.answer.destinationLibraryId, null, 'synthetic-operator', false,
-        { policyQuestionContext: context, answerContract: parsed.answer });
+      const { resolution: result } = await resolveRuntimeQuestionInTransaction(row.id, req.body, 'synthetic-operator',
+        { policyQuestionContext: context });
       if (result.shouldRoute) routing();
       return res.json(result);
     } catch (error) { return res.status(error.statusCode || 500).json({ code: error.code }); }

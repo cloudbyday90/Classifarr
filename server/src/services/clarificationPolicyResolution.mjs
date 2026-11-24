@@ -3,7 +3,6 @@ import { captureRuntimeOutcomeEvaluationTime } from './runtimeOutcomeEvaluationT
 import { createLogger } from '../utils/logger.mjs';
 import { classificationOutcomeService } from './classificationOutcomeService.mjs';
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
-import { parsePendingResolutionHistoryId } from './pendingResolutionHistoryId.mjs';
 import { DISCORD_LEGACY_MESSAGE_REQUIRED, matchesDiscordLegacyMessage } from './discordLegacyControlIdentity.mjs';
 import { createStatusError, safeParseJson, parsePolicyQuestion, getQuestionOptionLibraryIds } from './clarificationUtils.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
@@ -14,6 +13,8 @@ import {
     POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS,
     POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS,
     getPolicyRuntimeQuestionAnswerSelectedOption,
+    isPolicyRuntimeQuestionResolutionAction,
+    parsePolicyRuntimeQuestionAnswer,
     validatePolicyRuntimeQuestionAnswer,
 } from './policyRuntimeQuestionAnswerContract.mjs';
 import {
@@ -74,24 +75,33 @@ function createAnswerContractError(validation) {
     return createStatusError(message, staleReasons.has(reason) ? 409 : 400, reason);
 }
 
-export async function resolvePolicyQuestion(classificationId, selectedLibraryId, selectedOption, resolvedBy, generateRule = true, {
+export async function resolveRuntimeQuestionInTransaction(historyId, payload, resolvedBy, {
     policyQuestionContext,
-    answerContract = null,
-    allowBigintHistoryId = false,
     discordMessageId = undefined,
     runtimeDestinationEvidenceCommandService = null,
     runtimeDestinationEvidenceAuthorizationContext = null,
     reviewCorpusCaptureService = null,
     reviewCorpusActorId = null,
 } = {}) {
-    const parseHistoryId = allowBigintHistoryId === true && answerContract
-        ? normalizeDatabaseBigintId
-        : parsePendingResolutionHistoryId;
-    if (parseHistoryId(classificationId) === null) {
+    const parsed = parsePolicyRuntimeQuestionAnswer(payload);
+    if (!parsed.ok) {
+        throw createStatusError('Invalid policy question answer', 400, parsed.reason);
+    }
+    const answerContract = parsed.answer;
+    const { actionId: answerActionId, destinationLibraryId: selectedLibraryId } = answerContract;
+    if (!isPolicyRuntimeQuestionResolutionAction(answerActionId)) {
+        throw createStatusError(
+            'This action cannot resolve a policy question',
+            400,
+            POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.ACTION_UNAVAILABLE,
+        );
+    }
+    const classificationId = normalizeDatabaseBigintId(historyId);
+    if (classificationId === null) {
         throw createStatusError('Invalid classification id', 400, 'invalid_classification_id');
     }
     try {
-        const result = await db.withTransaction(async (client) => {
+        const resolution = await db.withTransaction(async (client) => {
 
         const classResult = await client.query(
             `SELECT ch.*
@@ -135,7 +145,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             const existingMetadata = typeof existingClassification.metadata === 'string'
                 ? (safeParseJson(existingClassification.metadata) || {})
                 : (existingClassification.metadata || {});
-            const answerIsIdempotent = answerContract && isIdempotentRuntimeQuestionAnswer(
+            const answerIsIdempotent = isIdempotentRuntimeQuestionAnswer(
                 getRecordedRuntimeQuestionAnswer(existingMetadata),
                 answerContract,
                 classificationId,
@@ -145,7 +155,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                 ['completed', 'routed'].includes(existingClassification.status) &&
                 Number.isInteger(existingLibraryId) &&
                 existingLibraryId === selectedLibraryId &&
-                (!answerContract || answerIsIdempotent)
+                answerIsIdempotent
             ) {
                 return {
                     success: true,
@@ -155,7 +165,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                     generatedPattern: null,
                     shouldRoute: false,
                     alreadyResolved: true,
-                    idempotent: answerIsIdempotent === true,
+                    idempotent: true,
                 };
             }
 
@@ -165,13 +175,8 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         }
 
         const classification = classResult.rows[0];
-        if (discordMessageId !== undefined) {
-            if (!matchesDiscordLegacyMessage(classification, discordMessageId)) {
-                throw createStatusError(DISCORD_LEGACY_MESSAGE_REQUIRED, 403, 'legacy_discord_message_mismatch');
-            }
-            if (!answerContract && (classification.policy_question != null || classification.library_id !== selectedLibraryId)) {
-                throw createStatusError('Policy question is stale and must be retried', 409, 'policy_question_stale');
-            }
+        if (discordMessageId !== undefined && !matchesDiscordLegacyMessage(classification, discordMessageId)) {
+            throw createStatusError(DISCORD_LEGACY_MESSAGE_REQUIRED, 403, 'legacy_discord_message_mismatch');
         }
         const selectedLibraryResult = await client.query(
             `SELECT id, name, arr_type, media_type, is_active
@@ -204,117 +209,87 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
         }
 
         const policyQuestion = parsePolicyQuestion(classification.policy_question);
-        let runtimeQuestionAnswerContract = null;
-        const normalizationStatus = getRuntimeQuestionNormalizationStatus(policyQuestion);
-        if (policyQuestion && !normalizationStatus.actionable) {
+        if (!policyQuestion) {
+            throw createAnswerContractError({ reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.INVALID_QUESTION });
+        }
+        if (!getRuntimeQuestionNormalizationStatus(policyQuestion).actionable) {
             throw createStatusError(
                 'Policy question must be refreshed before it can be resolved',
                 409,
-                'policy_question_normalization_required'
+                'policy_question_normalization_required',
             );
         }
         const isNativeRuntimeQuestion = isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion);
-        const isNormalizedRuntimeQuestion = normalizationStatus.contract === 'normalization';
-        const legacyRuleGenerationRequested = generateRule === true &&
-            !isNativeRuntimeQuestion &&
-            !isNormalizedRuntimeQuestion;
-        if (policyQuestion) {
-            const {
-                extractQuestionContext,
-                getPolicyQuestionContextVersion,
-                isPolicyQuestionStale,
-            } = policyQuestionContext;
-            const currentContextVersion = await getPolicyQuestionContextVersion(
-                client,
-                extractQuestionContext(policyQuestion)
+        const {
+            extractQuestionContext,
+            getPolicyQuestionContextVersion,
+            isPolicyQuestionStale,
+        } = policyQuestionContext;
+        const currentContextVersion = await getPolicyQuestionContextVersion(client, extractQuestionContext(policyQuestion));
+        if (isPolicyQuestionStale(policyQuestion, currentContextVersion)) {
+            throw createStatusError(
+                'Policy question is stale and must be retried',
+                409,
+                'policy_question_stale'
             );
-
-            if (isPolicyQuestionStale(policyQuestion, currentContextVersion)) {
-                throw createStatusError(
-                    'Policy question is stale and must be retried',
-                    409,
-                    'policy_question_stale'
-                );
-            }
-
-            if (answerContract) {
-                const answerValidation = validatePolicyRuntimeQuestionAnswer({
-                    classification,
-                    question: policyQuestion,
-                    answer: answerContract,
-                    isStale: false,
-                    currentContextVersion,
-                });
-                if (!answerValidation.ok) {
-                    throw createAnswerContractError(answerValidation);
-                }
-                answerContract = answerValidation.answer;
-                runtimeQuestionAnswerContract = answerValidation.contract;
-                if (discordMessageId !== undefined && !runtimeQuestionAnswerContract.candidate_destinations.some(
-                    candidate => candidate.library_id === selectedLibraryId
-                )) {
-                    throw createAnswerContractError({ reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.DESTINATION_NOT_CANDIDATE });
-                }
-            }
-
-            const optionLibraryIds = getQuestionOptionLibraryIds(policyQuestion);
-            const restrictToCandidateDestinations = !answerContract ||
-                answerContract.actionId === POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION;
-            if (restrictToCandidateDestinations && optionLibraryIds.length > 0 && !optionLibraryIds.includes(selectedLibraryId)) {
-                throw createStatusError(
-                    'Selected library is no longer valid for this policy question',
-                    400,
-                    'invalid_policy_option'
-                );
-            }
         }
 
-        if (answerContract && !policyQuestion) {
-            throw createAnswerContractError({
-                reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.INVALID_QUESTION,
-            });
+        const answerValidation = validatePolicyRuntimeQuestionAnswer({
+            classification,
+            question: policyQuestion,
+            answer: answerContract,
+            currentContextVersion,
+        });
+        if (!answerValidation.ok) {
+            throw createAnswerContractError(answerValidation);
+        }
+        const candidateDestinations = answerValidation.contract.candidate_destinations;
+        if (discordMessageId !== undefined && !candidateDestinations.some(
+            candidate => candidate.library_id === selectedLibraryId
+        )) {
+            throw createAnswerContractError({ reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.DESTINATION_NOT_CANDIDATE });
+        }
+
+        const optionLibraryIds = getQuestionOptionLibraryIds(policyQuestion);
+        if (answerActionId === POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.CONFIRM_DESTINATION &&
+            optionLibraryIds.length > 0 && !optionLibraryIds.includes(selectedLibraryId)) {
+            throw createStatusError(
+                'Selected library is no longer valid for this policy question',
+                400,
+                'invalid_policy_option'
+            );
         }
 
         const selectedLibraryName = selectedLibrary.name || classification.library_name;
         const classificationMetadata = typeof classification.metadata === 'string'
             ? (safeParseJson(classification.metadata) || {})
             : (classification.metadata || {});
-        const currentLibraryCandidateRetrievalOutcomeAttribution = answerContract
-            ? buildCurrentLibraryCandidateRetrievalOutcomeAttribution({
-                classificationDetails: classificationMetadata.classification_details,
-                answer: answerContract,
-                candidateDestinations: runtimeQuestionAnswerContract?.candidate_destinations,
-                selectedDestinationLibraryId: selectedLibraryId,
-            })
-            : null;
-        const policyCandidateContrastiveOutcomeAttribution = answerContract
-            ? buildPolicyCandidateContrastiveOutcomeAttribution({
-                classificationDetails: classificationMetadata.classification_details,
-                answer: answerContract,
-                candidateDestinations: runtimeQuestionAnswerContract?.candidate_destinations,
-                selectedDestinationLibraryId: selectedLibraryId,
-            })
-            : null;
-        const policyCandidateCorrectionOutcomeAttribution = answerContract
-            ? buildPolicyCandidateCorrectionOutcomeAttribution({
-                classificationDetails: classificationMetadata.classification_details,
-                answer: answerContract,
-                candidateDestinations: runtimeQuestionAnswerContract?.candidate_destinations,
-                selectedDestinationLibraryId: selectedLibraryId,
-            })
-            : null;
+        const currentLibraryCandidateRetrievalOutcomeAttribution = buildCurrentLibraryCandidateRetrievalOutcomeAttribution({
+            classificationDetails: classificationMetadata.classification_details,
+            answer: answerContract,
+            candidateDestinations,
+            selectedDestinationLibraryId: selectedLibraryId,
+        });
+        const policyCandidateContrastiveOutcomeAttribution = buildPolicyCandidateContrastiveOutcomeAttribution({
+            classificationDetails: classificationMetadata.classification_details,
+            answer: answerContract,
+            candidateDestinations,
+            selectedDestinationLibraryId: selectedLibraryId,
+        });
+        const policyCandidateCorrectionOutcomeAttribution = buildPolicyCandidateCorrectionOutcomeAttribution({
+            classificationDetails: classificationMetadata.classification_details,
+            answer: answerContract,
+            candidateDestinations,
+            selectedDestinationLibraryId: selectedLibraryId,
+        });
         let nativeResolutionProvenance = null;
-        const serverSelectedOption = answerContract
-            ? getPolicyRuntimeQuestionAnswerSelectedOption({
-                question: policyQuestion,
-                answer: answerContract,
-            })
-            : selectedOption;
+        const serverSelectedOption = getPolicyRuntimeQuestionAnswerSelectedOption({
+            question: policyQuestion,
+            answer: answerContract,
+        });
 
-        if (answerContract && !serverSelectedOption) {
-            throw createAnswerContractError({
-                reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.INVALID_QUESTION,
-            });
+        if (!serverSelectedOption) {
+            throw createAnswerContractError({ reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.INVALID_QUESTION });
         }
 
         if (isNativeRuntimeQuestion) {
@@ -364,7 +339,6 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                 selectedOption: serverSelectedOption,
                 answerContract,
                 actorId: resolvedBy,
-                legacyRuleGenerationRequested,
             });
 
         if (runtimeResolutionLearning && runtimeResolutionLearning.audit.ok !== true) {
@@ -401,10 +375,10 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             selected_option: serverSelectedOption || null,
             final_library_id: selectedLibraryId,
             final_library_name: selectedLibraryName,
-            runtime_question_answer: answerContract
-                ? { ...buildPolicyRuntimeQuestionAnswerReceipt(classification.id, answerContract),
-                    evaluation_observed_at: await captureRuntimeOutcomeEvaluationTime(client) }
-                : undefined,
+            runtime_question_answer: {
+                ...buildPolicyRuntimeQuestionAnswerReceipt(classification.id, answerContract),
+                evaluation_observed_at: await captureRuntimeOutcomeEvaluationTime(client),
+            },
             ...(currentLibraryCandidateRetrievalOutcomeAttribution
                 ? {
                     current_library_candidate_retrieval_outcome_attribution:
@@ -445,7 +419,7 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
             : null;
 
         const runtimeDestinationEvidence = isNativeRuntimeQuestion &&
-            answerContract?.actionId !== POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE &&
+            answerActionId !== POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE &&
             runtimeDestinationEvidenceAuthorizationContext?.authenticated === true &&
             typeof runtimeDestinationEvidenceCommandService?.execute === 'function'
             ? await runtimeDestinationEvidenceCommandService.execute({
@@ -496,11 +470,11 @@ export async function resolvePolicyQuestion(classificationId, selectedLibraryId,
                     admission: runtimeDestinationEvidence.admission,
                 }
                 : null,
-            answerActionId: answerContract?.actionId || null,
-            shouldRoute: answerContract?.actionId !== POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE,
+            answerActionId,
+            shouldRoute: answerActionId !== POLICY_RUNTIME_QUESTION_ANSWER_ACTION_IDS.ROUTE_NOT_APPLICABLE,
         };
         }); // end withTransaction
-        return result;
+        return { resolution, answerActionId };
     } catch (error) {
         if (error.statusCode && error.statusCode < 500) {
             logger.warn('Policy question resolution rejected', {

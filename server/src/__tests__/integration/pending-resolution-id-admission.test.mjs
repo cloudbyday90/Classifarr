@@ -126,6 +126,13 @@ test.each([
     await resolve(id).expect(409);
   }
   expect(await snapshot()).toEqual(legacy);
+
+  await query(`UPDATE classification_history
+    SET metadata=metadata #- '{classification_details,outcome_link,runtime_question_answer}'
+    WHERE id=$1`, [id]);
+  const withoutReceipt = await snapshot();
+  await resolve(id).expect(409);
+  expect(await snapshot()).toEqual(withoutReceipt);
   expect(await learningReceipts()).toEqual(savedLearning);
   expect(routeToArr).toHaveBeenCalledTimes(1);
 });
