@@ -60,10 +60,11 @@ describe('logsApi', () => {
   })
 
   it('getLogs appends params to URL', async () => {
-    const params = new URLSearchParams({ page: '1', limit: '50' })
-    mockGetDataRequest.mockResolvedValueOnce({ logs: [], pagination: {} })
-    await getLogs(params)
-    expect(mockGetDataRequest).toHaveBeenCalledWith('/logs?page=1&limit=50')
+    const id = '9007199254740993'
+    const params = new URLSearchParams({ page: '1', limit: '50', classificationId: id })
+    mockGetDataRequest.mockResolvedValueOnce({ logs: [{ classification_id: id }], pagination: {} })
+    expect(await getLogs(params)).toMatchObject({ logs: [{ classification_id: id }] })
+    expect(mockGetDataRequest).toHaveBeenCalledWith(`/logs?page=1&limit=50&classificationId=${id}`)
   })
 
   it('getLogError calls getDataRequest with error id', async () => {
@@ -85,10 +86,10 @@ describe('logsApi', () => {
   })
 
   it('exportLogs appends params to URL', async () => {
-    const params = new URLSearchParams({ level: 'error' })
+    const params = new URLSearchParams({ level: 'error', classification_id: '9223372036854775807' })
     mockGetDataRequest.mockResolvedValueOnce([])
     await exportLogs(params)
-    expect(mockGetDataRequest).toHaveBeenCalledWith('/logs/export?level=error')
+    expect(mockGetDataRequest).toHaveBeenCalledWith('/logs/export?level=error&classification_id=9223372036854775807')
   })
 
   it('clearAllLogs calls DELETE with /logs', async () => {

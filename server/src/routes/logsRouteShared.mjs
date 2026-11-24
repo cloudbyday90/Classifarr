@@ -9,7 +9,6 @@
  */
 
 import {
-  CLASSIFICATION_ID_TEXT_EXPR,
   CORRELATION_ID_EXPR,
   ERROR_STAGE_EXPR,
   REASON_CODE_EXPR,
@@ -17,11 +16,13 @@ import {
   buildLogsWhereClause,
   createLogsLimiter,
 } from './logsRouteHelpers.mjs';
+import { LOG_CLASSIFICATION_ID_PROJECTION } from './logClassificationIds.mjs';
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { parseIntParam } from './evidenceRouteHelpers.mjs';
 import { NotFoundError } from '../utils/appError.mjs';
 import { createMediaSyncLogRemediation } from '../services/mediaSyncLogRemediation.mjs';
 import { formatMediaSyncRemediation } from '../services/mediaSyncRemediationReport.mjs';
+import { normalizeDatabaseBigintId } from '../services/databaseIntegerValues.mjs';
 
 export function createLogsRouter({
   express,
@@ -64,10 +65,7 @@ export function createLogsRouter({
          message,
          resolved,
          created_at,
-         CASE
-           WHEN (${CLASSIFICATION_ID_TEXT_EXPR}) ~ '^[0-9]+$' THEN (${CLASSIFICATION_ID_TEXT_EXPR})::int
-           ELSE NULL
-         END AS classification_id,
+         ${LOG_CLASSIFICATION_ID_PROJECTION} AS classification_id,
          ${ERROR_STAGE_EXPR} AS error_stage,
          ${REASON_CODE_EXPR} AS reason_code,
          ${CORRELATION_ID_EXPR} AS correlation_id,
@@ -89,7 +87,10 @@ export function createLogsRouter({
     );
 
     res.json({
-      logs: logsResult.rows,
+      logs: logsResult.rows.map((row) => ({
+        ...row,
+        classification_id: normalizeDatabaseBigintId(row.classification_id),
+      })),
       pagination: {
         page,
         limit,

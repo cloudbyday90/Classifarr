@@ -100,6 +100,66 @@ describe('Logs Lifecycle Integration Tests', () => {
         return result.rows[0];
     }
 
+    it('lists and filters exact History IDs without narrowing or casting saved metadata', async () => {
+        const lower = '9007199254740992';
+        const upper = '9007199254740993';
+        const max = '9223372036854775807';
+        const padded = `${'0'.repeat(24)}${upper}`;
+        const fixtures = [
+            ['above integer range', '2147483648', null, 2147483648],
+            ['last safe number', '9007199254740991', null, 9007199254740991],
+            ['lower typed ID', lower, `{"classificationId":"${upper}"}`, lower],
+            ['exact legacy JSON number', null, `{"classificationId":${upper}}`, upper],
+            ['upper typed ID', upper, null, upper],
+            ['padded legacy text', null, JSON.stringify({ classificationId: padded }), upper],
+            ['maximum typed ID', max, null, max],
+            ['legacy overflow', null, '{"classificationId":9223372036854775808}', null],
+            ['oversized legacy text', null, JSON.stringify({ classificationId: `${max}0` }), null],
+            ['malformed legacy ID', null, '{"classificationId":{"id":42}}', null],
+            ['zero typed ID', '0', `{"classificationId":"${upper}"}`, null],
+        ];
+
+        for (const [index, [message, id, metadata]] of fixtures.entries()) {
+            await db.query(`
+                INSERT INTO error_log (level, module, message, classification_id, metadata, created_at)
+                VALUES ('ERROR', 'history-filter', $1, $2, $3, TIMESTAMP '2026-01-01' + $4 * INTERVAL '1 second')
+            `, [message, id, metadata, index]);
+        }
+
+        const all = await request(app).get('/api/logs?module=history-filter').set(authHeaders()).expect(200);
+        expect(all.body.logs.map(({ message, classification_id }) => [message, classification_id]))
+            .toEqual(fixtures.map(([message, , , expected]) => [message, expected]).reverse());
+
+        const firstPage = await request(app)
+            .get(`/api/logs?module=history-filter&classification_id=${upper}&classificationId=${upper}&limit=1`)
+            .set(authHeaders()).expect(200);
+        expect(firstPage.body.pagination).toEqual({ page: 1, limit: 1, total: 3, totalPages: 3 });
+        expect(firstPage.body.logs).toMatchObject([{ message: 'padded legacy text', classification_id: upper }]);
+
+        const nextPage = await request(app).get(`/api/logs?classificationId=${upper}&page=2&limit=1`)
+            .set(authHeaders()).expect(200);
+        expect(nextPage.body.logs).toMatchObject([{ message: 'upper typed ID', classification_id: upper }]);
+
+        const matchingLower = await request(app).get(`/api/logs?classification_id=${lower}`)
+            .set(authHeaders()).expect(200);
+        expect(matchingLower.body.logs).toMatchObject([
+            { message: 'lower typed ID', classification_id: lower },
+        ]);
+
+        const raw = await request(app).get(`/api/logs/export?classification_id=${upper}`)
+            .set(authHeaders()).expect(200);
+        expect(raw.headers['content-disposition']).toContain('logs-export-');
+        expect(raw.body).toMatchObject([
+            { message: 'padded legacy text', classification_id: null, metadata: { classificationId: padded } },
+            { message: 'upper typed ID', classification_id: upper, metadata: null },
+            { message: 'exact legacy JSON number', classification_id: null, metadata: { classificationId: Number(lower) } },
+        ]);
+
+        const maxExport = await request(app).get(`/api/logs/export?classificationId=${max}`)
+            .set(authHeaders()).expect(200);
+        expect(maxExport.body).toMatchObject([{ message: 'maximum typed ID', classification_id: max }]);
+    });
+
     describe('GET / — list logs', () => {
         it('returns paginated error logs', async () => {
             await seedErrorLog({ message: 'Error 1' });

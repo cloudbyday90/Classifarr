@@ -86,6 +86,7 @@ describe('logs routes', () => {
         expect(db.query.mock.calls[0][0]).toContain(`to_jsonb(error_log)->>'reason_code'`);
         expect(db.query.mock.calls[0][0]).toContain(`to_jsonb(error_log)->>'sql_state'`);
         expect(db.query.mock.calls[0][0]).toContain(`to_jsonb(error_log)->>'classification_id'`);
+        expect(db.query.mock.calls[0][1]).toContain('42');
         expect(db.query.mock.calls[0][0]).toContain(`to_jsonb(error_log)->>'correlation_id'`);
         expect(db.query.mock.calls[1][0]).toContain('classification_id');
         expect(db.query.mock.calls[1][0]).toContain(`COALESCE((to_jsonb(error_log)->>'reason_code'), metadata->>'reasonCode') AS reason_code`);
@@ -115,10 +116,30 @@ describe('logs routes', () => {
         });
 
         await request(protectedApp)
-            .get('/api/logs')
+            .get('/api/logs?classificationId=invalid')
             .expect(403, { error: 'Admin access required' });
 
         expect(getNext).toHaveBeenCalledTimes(1);
+        expect(db.query).not.toHaveBeenCalled();
+    });
+
+    test.each([
+        'classification_id=',
+        'classificationId=0',
+        'classificationId=0042',
+        'classificationId=42suffix',
+        'classificationId=42.0',
+        'classificationId=42%0A',
+        'classificationId=9223372036854775808',
+        'classificationId=42&classificationId=42',
+        'classification_id%5B%5D=42',
+        'classificationId%5Bvalue%5D=42',
+        'classification_id=42&classificationId=43',
+    ])('rejects invalid History filters before list or export queries (%s)', async (query) => {
+        for (const path of ['/api/logs', '/api/logs/export']) {
+            const response = await request(app).get(`${path}?${query}`).expect(400);
+            expect(response.body.error).toContain('History ID');
+        }
         expect(db.query).not.toHaveBeenCalled();
     });
 

@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **History IDs in logs** — List and export filters match exact IDs through
+  PostgreSQL's BIGINT limit. Large IDs stay exact in the log list, and
+  malformed saved IDs no longer break it. See the
+  [outcome](docs/architecture/log-history-bigint-outcome.md).
+
 - **Manual suggestion analysis** — Both analysis routes share one slot per API
   process. An overlapping request receives `503` before analysis starts. See
   the [outcome](docs/architecture/manual-suggestion-analysis-admission-outcome.md).

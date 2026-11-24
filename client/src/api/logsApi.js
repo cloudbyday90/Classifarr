@@ -22,6 +22,7 @@ export function getLogStats() {
   return getDataRequest('/logs/stats')
 }
 
+/** Administrator list. Supply History ID filters as exact decimal text in URLSearchParams. */
 export function getLogs(params) {
   const query = params.toString()
   return getDataRequest(`/logs?${query}`)
@@ -41,6 +42,7 @@ export function resolveLogError(errorId) {
   return apiClient.post(`/logs/error/${errorId}/resolve`, {})
 }
 
+/** Raw administrator export. Supply History ID filters as exact decimal text in URLSearchParams. */
 export function exportLogs(params) {
   const query = params.toString()
   return getDataRequest(`/logs/export?${query}`)

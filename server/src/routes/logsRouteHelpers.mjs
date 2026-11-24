@@ -16,15 +16,16 @@ export const REASON_CODE_EXPR = `COALESCE((to_jsonb(error_log)->>'reason_code'),
 export const CORRELATION_ID_EXPR = `COALESCE((to_jsonb(error_log)->>'correlation_id'), metadata->>'correlationId')`;
 export const ERROR_STAGE_EXPR = `COALESCE((to_jsonb(error_log)->>'error_stage'), metadata->>'errorStage')`;
 export const SQL_STATE_EXPR = `COALESCE((to_jsonb(error_log)->>'sql_state'), metadata->>'sqlState')`;
-export const CLASSIFICATION_ID_TEXT_EXPR = `COALESCE((to_jsonb(error_log)->>'classification_id'), metadata->>'classificationId')`;
 
 import { logsLimiterConfig } from '../config/rateLimits.mjs';
+import { LOG_CLASSIFICATION_ID_TEXT, readLogClassificationIdFilter } from './logClassificationIds.mjs';
 
 export function createLogsLimiter(rateLimit) {
   return rateLimit(logsLimiterConfig);
 }
 
 export function buildLogsWhereClause(query = {}, { includeDateRange = false } = {}) {
+  const classificationId = readLogClassificationIdFilter(query);
   const whereConditions = [];
   const queryParams = [];
   let paramCount = 1;
@@ -72,10 +73,8 @@ export function buildLogsWhereClause(query = {}, { includeDateRange = false } = 
     queryParams.push(sqlState.toUpperCase());
   }
 
-  const classificationId = Number.parseInt(query.classification_id || query.classificationId, 10);
-  if (Number.isInteger(classificationId) && classificationId > 0) {
-    whereConditions.push(`(${CLASSIFICATION_ID_TEXT_EXPR}) ~ '^[0-9]+$'`);
-    whereConditions.push(`(${CLASSIFICATION_ID_TEXT_EXPR})::int = $${paramCount++}`);
+  if (classificationId !== null) {
+    whereConditions.push(`${LOG_CLASSIFICATION_ID_TEXT} = $${paramCount++}::text`);
     queryParams.push(classificationId);
   }
 
