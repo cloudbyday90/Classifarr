@@ -18,6 +18,7 @@
 
 import { jest } from '@jest/globals';
 import { createNamedMockModule, createLoggerModuleMock, createServiceStubs } from './helpers/mockFactory.mjs';
+import { extractQuestionContext } from '../utils/policyQuestionContext.mjs';
 
 const mockDb = { query: jest.fn() };
 const mockEmbeddingService = createServiceStubs(['generateAndStore', 'isProviderBusyError'], {
@@ -150,6 +151,22 @@ describe('normalizePolicyQuestion', () => {
     const parsed = JSON.parse(result);
     expect(parsed).toHaveProperty('question', 'Retry classification before making a destination decision.');
     expect(parsed.meta.runtime_question_normalization.cleanup_required).toBe(true);
+  });
+
+  test('saves a retry placeholder without a freshness lookup for an invalid context reference', async () => {
+    policyQuestionContext.extractQuestionContext.mockImplementation(extractQuestionContext);
+    const saved = JSON.parse(await classificationPersistenceService.normalizePolicyQuestion({
+      question: 'Earlier question',
+      options: [{ library_id: { toString: null } }],
+      meta: { ai_rationale: 'Earlier rationale' },
+    }));
+    expect(saved.options).toEqual([]);
+    expect(saved.meta).toEqual({ runtime_question_normalization: expect.objectContaining({
+      cleanup_required: true,
+      cleanup_reason: 'policy_context_invalid',
+    }) });
+    expect(policyQuestionContext.getPolicyQuestionContextVersion).not.toHaveBeenCalled();
+    expect(policyQuestionContext.stampPolicyQuestionContext).not.toHaveBeenCalled();
   });
 
   test('returns stamped JSON string with _context_version attached', async () => {

@@ -11,6 +11,11 @@ Archived changelogs: [November 2026 v0.49.4 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Pending question freshness** — Keep the pending queue visible when a saved
+  policy or library reference is invalid. Affected questions stay retryable,
+  and cleanup queues fresh evaluation before an answer can replay. See the
+  [outcome](docs/architecture/pending-question-context-id-outcome.md).
+
 - **Pending answer destinations** — Validate exact positive INTEGER library
   IDs before lookup. The web client follows the same rule, and saved cleanup
   receipts keep their existing decoding. See the

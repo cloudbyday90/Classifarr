@@ -119,7 +119,8 @@ export async function getPendingClassifications(policyQuestionContext) {
                 };
             }
 
-            const normalizationStatus = getRuntimeQuestionNormalizationStatus(parsedQuestion);
+            const context = extractQuestionContext(parsedQuestion);
+            const normalizationStatus = getRuntimeQuestionNormalizationStatus(parsedQuestion, context);
             if (!normalizationStatus.actionable) {
                 return {
                     ...row,
@@ -130,7 +131,6 @@ export async function getPendingClassifications(policyQuestionContext) {
                 };
             }
 
-            const context = extractQuestionContext(parsedQuestion);
             const cacheKey = buildQuestionContextCacheKey(context);
 
             let currentContextVersion = contextVersionCache.get(cacheKey);

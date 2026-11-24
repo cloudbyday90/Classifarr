@@ -99,11 +99,18 @@ curl -X POST http://localhost:21324/api/classification/classify \
 contract's `candidate_item.classification_id` use JSON integers through
 `9007199254740991` and exact decimal strings above that value.
 
+A saved question with an invalid policy or library context reference remains
+in the list with `policy_question_stale: true`, reason
+`policy_context_invalid`, and no current context version. Retry the item to
+refresh its review before answering. Its answer contract is `null`. Other
+pending items remain available.
+
 `POST /api/classification/pending/:id/resolve` accepts a canonical positive
 decimal History ID up to `9223372036854775807`. Send the current contract's
 version and fingerprint, the action ID, and the required destination ID.
 Send `destination_library_id` as a positive JSON integer or canonical decimal
 string from `1` through `2147483647`. Invalid values return `400`.
+An invalid saved question context follows the existing stale-question `409`.
 The response's `classificationId` uses the same number-or-string convention.
 The server returns the existing completed result on an exact receipt replay
 without routing a second time. Larger IDs require a matching saved row binding.

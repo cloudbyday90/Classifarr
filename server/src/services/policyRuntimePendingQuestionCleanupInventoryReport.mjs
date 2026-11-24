@@ -120,7 +120,7 @@ function buildContextState({
     currentContextVersion: mostRecentTimestamp === null
       ? null
       : new Date(mostRecentTimestamp).toISOString(),
-    contextEvaluated: policyReferencesAreActive,
+    contextEvaluated: !context.hasInvalidReferences && policyReferencesAreActive,
   };
 }
 

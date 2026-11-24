@@ -212,21 +212,23 @@ export async function resolveRuntimeQuestionInTransaction(historyId, payload, re
         if (!policyQuestion) {
             throw createAnswerContractError({ reason: POLICY_RUNTIME_QUESTION_ANSWER_REASON_IDS.INVALID_QUESTION });
         }
-        if (!getRuntimeQuestionNormalizationStatus(policyQuestion).actionable) {
+        const {
+            extractQuestionContext,
+            getPolicyQuestionContextVersion,
+            isPolicyQuestionStale,
+        } = policyQuestionContext;
+        const context = extractQuestionContext(policyQuestion);
+        if (!context.hasInvalidReferences && !getRuntimeQuestionNormalizationStatus(policyQuestion, context).actionable) {
             throw createStatusError(
                 'Policy question must be refreshed before it can be resolved',
                 409,
                 'policy_question_normalization_required',
             );
         }
-        const isNativeRuntimeQuestion = isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion);
-        const {
-            extractQuestionContext,
-            getPolicyQuestionContextVersion,
-            isPolicyQuestionStale,
-        } = policyQuestionContext;
-        const currentContextVersion = await getPolicyQuestionContextVersion(client, extractQuestionContext(policyQuestion));
-        if (isPolicyQuestionStale(policyQuestion, currentContextVersion)) {
+        const currentContextVersion = context.hasInvalidReferences
+            ? null
+            : await getPolicyQuestionContextVersion(client, context);
+        if (context.hasInvalidReferences || isPolicyQuestionStale(policyQuestion, currentContextVersion)) {
             throw createStatusError(
                 'Policy question is stale and must be retried',
                 409,
@@ -234,6 +236,7 @@ export async function resolveRuntimeQuestionInTransaction(historyId, payload, re
             );
         }
 
+        const isNativeRuntimeQuestion = isPolicyRuntimeQuestionPersistenceEnvelope(policyQuestion);
         const answerValidation = validatePolicyRuntimeQuestionAnswer({
             classification,
             question: policyQuestion,

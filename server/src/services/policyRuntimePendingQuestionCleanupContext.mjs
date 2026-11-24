@@ -74,7 +74,7 @@ function buildCurrentContextState({
 
   return {
     activeLibraryIds,
-    contextEvaluated: policyReferencesAreCurrent,
+    contextEvaluated: !context.hasInvalidReferences && policyReferencesAreCurrent,
     currentContextVersion: latestTimestamp === null
       ? null
       : new Date(latestTimestamp).toISOString(),

@@ -16,13 +16,21 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
   const policyName = `Comedy ${'LongLibraryName'.repeat(8)}`
   const advisoryName = `Movies ${'AnotherLongLibraryName'.repeat(5)}`
   const id = '9223372036854775807'
+  const staleId = '9223372036854775806'
   const answer = { ...pendingReviewReference({ policyName, advisoryName }), candidate_item: { classification_id: id } }
+  const stale = {
+    id: staleId, title: 'Saved review requires refresh', media_type: 'movie',
+    policy_question_stale: true, policy_question_stale_reason: 'policy_context_invalid',
+    policy_question_current_context_version: null, policy_question_answer: null,
+    policy_question: { question: 'Saved question', options: [{ library_id: { toString: null } }] },
+  }
   await page.route(url => url.pathname.startsWith('/api/'), async route => {
     const request = route.request(), path = new URL(request.url()).pathname
     let data = {}, status = 200
     if (request.method() !== 'GET') {
       writes.push({ path, method: request.method(), body: request.postDataJSON() })
-      data = { success: true, routed: false, libraryName: advisoryName }
+      data = path === '/api/classification/retry' ? { results: [{ queued: true }] }
+        : { success: true, routed: false, libraryName: advisoryName }
     } else {
       if (path === '/api/setup/status') data = { setupRequired: false }
       if (['/api/auth/me', '/api/user/me'].includes(path)) data = { id: 1, role: 'admin', username: 'fixture-operator' }
@@ -32,7 +40,7 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
       if (path === '/api/queue/live-stats') data = { queue: { pending: 0 }, health: { ai: true, worker: true } }
       if (path === '/api/classification/pending') data = { items: [{ id, title: 'Synthetic review', year: 2026,
         media_type: 'movie', confidence: 100, library_name: 'Mutable unrelated label', policy_question_stale: false,
-        policy_question: { question: 'Old contradictory prompt' }, policy_question_answer: answer }] }
+        policy_question: { question: 'Old contradictory prompt' }, policy_question_answer: answer }, stale] }
       if (path === '/api/reclassification/batches/activity') data = { batches: [], nextCursor: null }
       if (path.includes('native-intent-reconciliation') || path.includes('held-out-semantic')) status = 403
     }
@@ -74,6 +82,15 @@ test('disagreement stays compact, keyboard accessible and explicit at narrow wid
   expect(writes[0]).toEqual({ path: `/api/classification/pending/${id}/resolve`, method: 'POST', body: {
     contract_version: 'policy.runtime_question_answer.v1', contract_fingerprint: 'abcdefghijklmnopqrstuv',
     action_id: 'confirm_destination', destination_library_id: 8 } })
+  const staleCard = page.locator('#needs-attention .action-item').filter({ hasText: stale.title })
+  await expect(staleCard.getByRole('status')).toContainText('must be refreshed')
+  await expect(staleCard.getByRole('button', { name: /^Confirm / })).toHaveCount(0)
+  const retry = staleCard.getByRole('button', { name: 'Retry Classification', exact: true })
+  await retry.focus()
+  await expect(retry).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect.poll(() => writes.length).toBe(2)
+  expect(writes[1]).toEqual({ path: '/api/classification/retry', method: 'POST', body: { classificationIds: [staleId], options: {} } })
 })
 
 for (const [action, bulk] of [['prompt_confirm', false], ['prompt_select', false], ['auto_classify', false], ['auto_classify', true]]) for (const gap of [false, true]) {

@@ -247,6 +247,10 @@ export class ClassificationPersistenceService {
       return null;
     }
 
+    if (this.policyQuestionContext.extractQuestionContext(parsed).hasInvalidReferences) {
+      return JSON.stringify(buildStaleRuntimeQuestionCleanup(parsed));
+    }
+
     if (requiresRuntimeQuestionCleanup(parsed)) {
       parsed = buildStaleRuntimeQuestionCleanup(parsed);
     }

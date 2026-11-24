@@ -13,9 +13,6 @@ import {
 } from './policyRuntimeQuestionNormalizer.mjs';
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
-  isPolicyRuntimeQuestionPersistenceEnvelope,
-} from './policyRuntimeQuestionPersistenceContract.mjs';
-import {
   extractQuestionContext,
   isPolicyQuestionStale,
 } from '../utils/policyQuestionContext.mjs';
@@ -85,15 +82,6 @@ function normalizePositiveIntegerSet(value) {
   return new Set(value
     .map(normalizePositiveInteger)
     .filter(Boolean));
-}
-
-function getQuestionContractId(question = {}) {
-  if (isPolicyRuntimeQuestionPersistenceEnvelope(question)) {
-    return 'native_persistence';
-  }
-
-  const status = getRuntimeQuestionNormalizationStatus(question);
-  return status.contract === 'normalization' ? 'normalization' : 'legacy_or_unknown';
 }
 
 function hasSafeNativeLearningMetadata(question = {}) {
@@ -185,22 +173,15 @@ function hasUntrustedLegacyResponse(classification = {}) {
   return true;
 }
 
-function hasStaleCandidateLibrary(question = {}, activeLibraryIds) {
-  if (!(activeLibraryIds instanceof Set)) return false;
-
-  const candidateLibraryIds = extractQuestionContext(question).libraryIds;
-  return candidateLibraryIds.some(libraryId => !activeLibraryIds.has(libraryId));
-}
-
 function getQuestionIssues(question, {
   currentContextVersion = null,
   activeLibraryIds = null,
   contextEvaluated = false,
 } = {}) {
   const source = asObject(question);
-  const contractId = getQuestionContractId(source);
-  const normalization = getRuntimeQuestionNormalizationStatus(source);
   const questionContext = extractQuestionContext(source);
+  const normalization = getRuntimeQuestionNormalizationStatus(source, questionContext);
+  const contractId = normalization.contract || 'legacy_or_unknown';
   const reasonIds = [];
 
   if (contractId === 'legacy_or_unknown') {
@@ -220,11 +201,12 @@ function getQuestionIssues(question, {
   }
   if (questionContext.libraryIds.length > 0 && !(activeLibraryIds instanceof Set)) {
     reasonIds.push(POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.CURRENT_STATE_UNAVAILABLE);
-  } else if (hasStaleCandidateLibrary(source, activeLibraryIds)) {
+  } else if (activeLibraryIds instanceof Set && questionContext.libraryIds.some(id => !activeLibraryIds.has(id))) {
     reasonIds.push(POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.STALE_CANDIDATE_LIBRARY);
   }
-  if ((questionContext.libraryIds.length > 0 || questionContext.policyIds.length > 0) &&
-      contextEvaluated !== true) {
+  if (questionContext.hasInvalidReferences ||
+      ((questionContext.libraryIds.length > 0 || questionContext.policyIds.length > 0) &&
+        contextEvaluated !== true)) {
     reasonIds.push(POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.CURRENT_STATE_UNAVAILABLE);
   } else if (isPolicyQuestionStale(source, currentContextVersion)) {
     reasonIds.push(POLICY_RUNTIME_PENDING_QUESTION_CLEANUP_REASON_IDS.POLICY_CONTEXT_CHANGED);

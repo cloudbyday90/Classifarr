@@ -1024,9 +1024,11 @@ describe('resolveRuntimeQuestionAnswer', () => {
                 policy_question: JSON.stringify({ question: 'Which genre should be prioritized?' }),
             }] })
             .mockResolvedValueOnce({ rows: [{ id: 5, name: 'Movies', media_type: 'movie', is_active: true }] });
+        policyQuestionContext.extractQuestionContext.mockReturnValueOnce({ policyIds: [], libraryIds: [] });
 
         await expect(svc.resolveRuntimeQuestionAnswer(1, confirmation, 'admin'))
             .rejects.toThrow('Policy question must be refreshed');
+        expect(policyQuestionContext.getPolicyQuestionContextVersion).not.toHaveBeenCalled();
         expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     });
 

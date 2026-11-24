@@ -177,6 +177,61 @@ test('validates a destination before lookup and accepts the INTEGER maximum as d
   expect(routeToArr).toHaveBeenCalledTimes(1);
 });
 
+test('keeps valid neighbors visible when saved context references are invalid', async () => {
+  const ids = ['9007199254741020', '9007199254741021', '9007199254741022', '9007199254741023'];
+  const { rows: [destination] } = await query(`INSERT INTO libraries(name,external_id,media_type,is_active)
+    VALUES ('Owned context destination','pending-context-destination','movie',true)
+    RETURNING id,name,media_type,is_active`);
+  const { rows: [policy] } = await query(`INSERT INTO library_policies(library_id,name,enabled)
+    VALUES ($1,'Owned context policy',true) RETURNING id`, [destination.id]);
+  const question = normalizePolicyRuntimeQuestion({ metadata: { media_type: 'movie' }, libraries: [destination],
+    policyResult: { ranked: [{ library_id: destination.id, policy_id: policy.id, score: 89 }] } });
+  for (const [index, id] of ids.entries()) {
+    await query(`INSERT INTO classification_history(id,title,tmdb_id,media_type,status,method,policy_question)
+      VALUES($1,'Owned pending context', $2,'movie','awaiting_decision','signal_calculation',$3::jsonb)`,
+    [id, 892060 + index, JSON.stringify(question)]);
+  }
+  const routeToArr = jest.fn();
+  const http = pendingHttp(routeToArr);
+  const list = async () => (await http.get('/pending').expect(200)).body.items;
+  const previous = (await list()).filter(row => ids.includes(row.id));
+  expect(previous).toHaveLength(ids.length);
+  const invalidQuestions = ids.slice(1).map(() => structuredClone(question));
+  invalidQuestions[0].meta.candidates[0].policy_id = '2147483648';
+  invalidQuestions[1].meta.candidates[0].library_id = '2147483648';
+  invalidQuestions[2].options[0].library_id = { toString: null };
+  for (const [index, corrupt] of invalidQuestions.entries()) {
+    await query('UPDATE classification_history SET policy_question=$2::jsonb WHERE id=$1',
+      [ids[index + 1], JSON.stringify(corrupt)]);
+  }
+  const snapshot = async () => (await query('SELECT * FROM classification_history WHERE id=ANY($1::bigint[]) ORDER BY id', [ids])).rows;
+  const saved = await snapshot();
+  const items = await list();
+  expect(items.filter(row => ids.includes(row.id))).toHaveLength(ids.length);
+  const itemFor = id => items.find(row => row.id === id);
+  const previousContract = id => previous.find(row => row.id === id).policy_question_answer;
+  expect(itemFor(ids[0]).policy_question_answer).toEqual(previousContract(ids[0]));
+  for (const [index, id] of ids.slice(1).entries()) {
+    const item = itemFor(id);
+    expect(item).toMatchObject({
+      policy_question_stale: true,
+      policy_question_stale_reason: 'policy_context_invalid',
+      policy_question_current_context_version: null,
+      policy_question_answer: null,
+      policy_question: invalidQuestions[index],
+    });
+    const { version, fingerprint } = previousContract(id);
+    const refused = await http.post(`/pending/${id}/resolve`).send({
+      contract_version: version, contract_fingerprint: fingerprint,
+      action_id: 'confirm_destination', destination_library_id: destination.id,
+    }).expect(409);
+    expect(refused.body.code).toBe('policy_question_stale');
+  }
+  expect(await snapshot()).toEqual(saved);
+  expect(routeToArr).not.toHaveBeenCalled();
+  await query('DELETE FROM classification_history WHERE id=ANY($1::bigint[])', [ids]);
+});
+
 test('native web resolution records its exact answer beside the retained route outcome', async () => {
   const id = '9007199254741017';
   const { rows: [destination] } = await query(`INSERT INTO libraries(name,external_id,media_type,is_active)

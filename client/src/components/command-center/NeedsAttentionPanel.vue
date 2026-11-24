@@ -440,6 +440,8 @@ function confidenceLabel(item) {
 }
 
 function suggestedLibraryLabel(item) {
+  if (item.policy_question_stale_reason === 'policy_context_invalid') return null
+
   const answer = answerContract(item)
   if (answer?.question?.type === 'native_runtime_question') {
     const destinations = policyQuestionCandidateDestinations(answer)

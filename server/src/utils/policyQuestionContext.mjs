@@ -4,10 +4,18 @@
  *
  * Policy-question context helper utilities.
  */
-function toPositiveIntArray(values) {
-  return Array.from(new Set((Array.isArray(values) ? values : [])
-    .map((value) => Number.parseInt(value, 10))
-    .filter((value) => Number.isInteger(value) && value > 0)));
+import { parseCanonicalDatabaseInt32Id } from '../services/databaseIntegerValues.mjs';
+
+function inspectReferenceIds(values) {
+  const ids = new Set();
+  let invalid = false;
+  for (const value of Array.isArray(values) ? values : []) {
+    if (value === null || value === undefined) continue;
+    const id = parseCanonicalDatabaseInt32Id(value);
+    if (id === null) invalid = true;
+    else ids.add(id);
+  }
+  return { ids: [...ids], invalid };
 }
 /** @internal */
 export function extractQuestionContext(question) {
@@ -15,28 +23,30 @@ export function extractQuestionContext(question) {
   const meta = parsed?.meta && typeof parsed.meta === 'object' ? parsed.meta : {};
   const candidates = Array.isArray(meta.candidates) ? meta.candidates : [];
   const options = Array.isArray(parsed?.options) ? parsed.options : [];
-  const policyIds = toPositiveIntArray(candidates.map((candidate) => candidate?.policy_id));
-  const libraryIds = toPositiveIntArray([
+  const policies = inspectReferenceIds(candidates.map((candidate) => candidate?.policy_id));
+  const libraries = inspectReferenceIds([
     ...candidates.map((candidate) => candidate?.library_id),
     ...options.map((option) => option?.library_id),
     meta.primary_candidate_library_id,
     meta.question_anchor_library_id,
   ]);
-  return {
-    policyIds,
-    libraryIds,
-  };
+  if (policies.invalid || libraries.invalid) {
+    // A partial set cannot prove that the saved question is current.
+    return { policyIds: [], libraryIds: [], hasInvalidReferences: true };
+  }
+  return { policyIds: policies.ids, libraryIds: libraries.ids };
 }
 /** @internal */
 export function buildQuestionContextCacheKey(context = {}) {
-  const policyIds = toPositiveIntArray(context.policyIds);
-  const libraryIds = toPositiveIntArray(context.libraryIds);
+  const { ids: policyIds } = inspectReferenceIds(context.policyIds);
+  const { ids: libraryIds } = inspectReferenceIds(context.libraryIds);
   return `p:${policyIds.join(',')}|l:${libraryIds.join(',')}`;
 }
 /** @internal */
 export async function getPolicyQuestionContextVersion(db, context = {}) {
-  const policyIds = toPositiveIntArray(context.policyIds);
-  const libraryIds = toPositiveIntArray(context.libraryIds);
+  if (context.hasInvalidReferences) return null;
+  const { ids: policyIds } = inspectReferenceIds(context.policyIds);
+  const { ids: libraryIds } = inspectReferenceIds(context.libraryIds);
   if (policyIds.length === 0 && libraryIds.length === 0) {
     return null;
   }
@@ -62,11 +72,11 @@ export async function getPolicyQuestionContextVersion(db, context = {}) {
 }
 /** @internal */
 export function stampPolicyQuestionContext(question, contextVersion, context = {}) {
-  if (!question || typeof question !== 'object') {
+  if (!question || typeof question !== 'object' || context.hasInvalidReferences) {
     return question;
   }
-  const policyIds = toPositiveIntArray(context.policyIds);
-  const libraryIds = toPositiveIntArray(context.libraryIds);
+  const { ids: policyIds } = inspectReferenceIds(context.policyIds);
+  const { ids: libraryIds } = inspectReferenceIds(context.libraryIds);
   return {
     ...question,
     meta: {

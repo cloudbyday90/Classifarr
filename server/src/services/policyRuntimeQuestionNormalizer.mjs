@@ -13,6 +13,7 @@ import {
   getAcceptableQuestionFrame,
 } from './policyQuestionLearningVocabulary.mjs';
 import { isPolicyRuntimeQuestionPersistenceEnvelope } from './policyRuntimeQuestionPersistenceContract.mjs';
+import { extractQuestionContext } from '../utils/policyQuestionContext.mjs';
 
 const POLICY_RUNTIME_QUESTION_NORMALIZATION_VERSION =
   'policy.runtime_question_normalization.v1';
@@ -329,8 +330,16 @@ function buildRuntimeQuestion({ question, result, policyResult, libraries, metad
   };
 }
 
-function getRuntimeQuestionNormalizationStatus(question) {
-  if (isPolicyRuntimeQuestionPersistenceEnvelope(question)) {
+function getRuntimeQuestionNormalizationStatus(question, context = extractQuestionContext(question)) {
+  const isNative = isPolicyRuntimeQuestionPersistenceEnvelope(question);
+  const normalizedQuestion = asObject(question);
+  const normalization = asObject(normalizedQuestion.meta?.runtime_question_normalization);
+
+  if (context.hasInvalidReferences) {
+    const contract = normalization.version === POLICY_RUNTIME_QUESTION_NORMALIZATION_VERSION ? 'normalization' : null;
+    return { actionable: false, reason: 'policy_context_invalid', contract: isNative ? 'native_persistence' : contract };
+  }
+  if (isNative) {
     return {
       actionable: true,
       reason: null,
@@ -338,8 +347,6 @@ function getRuntimeQuestionNormalizationStatus(question) {
     };
   }
 
-  const normalizedQuestion = asObject(question);
-  const normalization = asObject(normalizedQuestion.meta?.runtime_question_normalization);
   const meta = asObject(normalizedQuestion.meta);
   const options = asArray(normalizedQuestion.options);
   const optionIds = options.map(option => normalizePositiveInteger(option?.library_id));

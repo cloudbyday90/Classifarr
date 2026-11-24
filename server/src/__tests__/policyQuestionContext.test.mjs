@@ -55,6 +55,36 @@ describe('policyQuestionContext', () => {
     });
   });
 
+  test('preserves canonical INTEGER references, optional IDs and saved stamp metadata', () => {
+    const context = extractQuestionContext({
+      options: [{ library_id: '2147483647' }, {}, { library_id: null }],
+      meta: {
+        candidates: [{ policy_id: '2147483647', library_id: 2 }, { policy_id: null, library_id: '2' }],
+        question_context: { policy_ids: ['2147483648'] },
+      },
+    });
+    expect(context).toEqual({ policyIds: [2147483647], libraryIds: [2, 2147483647] });
+  });
+
+  test.each([
+    ['candidate policy', { meta: { candidates: [{ policy_id: 2147483648 }] } }],
+    ['candidate library', { meta: { candidates: [{ library_id: '5abc' }] } }],
+    ['option library', { options: [{ library_id: [5] }] }],
+    ['primary library', { meta: { primary_candidate_library_id: '05' } }],
+    ['anchor library', { meta: { question_anchor_library_id: 5.5 } }],
+  ])('refuses partial lookup and restamping for an invalid %s reference', async (_field, corrupt) => {
+    const question = {
+      options: [{ library_id: 2 }, ...(corrupt.options ?? [])],
+      meta: { question_context: { version: 'saved' }, ...corrupt.meta },
+    };
+    const context = extractQuestionContext(question);
+    expect(context).toEqual({ policyIds: [], libraryIds: [], hasInvalidReferences: true });
+    const db = { query: jest.fn() };
+    await expect(getPolicyQuestionContextVersion(db, context)).resolves.toBeNull();
+    expect(db.query).not.toHaveBeenCalled();
+    expect(stampPolicyQuestionContext(question, 'fresh', context)).toBe(question);
+  });
+
   test('detects stale questions from stamped context version or generated_at fallback', () => {
     expect(isPolicyQuestionStale({
       generated_at: '2026-03-14T23:00:00.000Z',

@@ -137,6 +137,53 @@ test('replays an exact large answer on its own row only', async () => {
   expect(await readRows([id, neighbor])).toEqual([resolved, adjacent]);
 });
 
+test('isolates malformed context in inventory and queues a fresh evaluation even with a saved answer', async () => {
+  const ids = ['9007199254741011', '9007199254741012', '9007199254741013'];
+  const question = normalizePolicyRuntimeQuestion({
+    metadata: { media_type: 'movie' }, libraries: [destination],
+    policyResult: { ranked: [{ library_id: destination.id, score: 88 }] },
+  });
+  await insertPending(ids[0], question);
+  const corrupt = structuredClone(question);
+  corrupt.options[0].library_id = { toString: null };
+  await insertPending(ids[1], corrupt);
+  const receipt = await recordAnswer(ids[2]);
+  await db.query(`UPDATE classification_history
+    SET policy_question = jsonb_set(policy_question, '{meta,candidates,0,policy_id}', '2147483648')
+    WHERE id = $1`, [ids[2]]);
+
+  const before = await readRows(ids);
+  const { body: inventory } = await request(app).get(inventoryUrl)
+    .set('Authorization', `Bearer ${token}`).expect(200);
+  expect(inventory.records.filter(row => ids.includes(row.classificationId))).toMatchObject([
+    { classificationId: ids[0], actionId: 'none' },
+    { classificationId: ids[1], actionId: 'mark_stale_require_retry',
+      reasonIds: expect.arrayContaining(['pending_question_cleanup_current_state_unavailable']) },
+    { classificationId: ids[2], actionId: 'resolve_outcome_only' },
+  ]);
+  expect(inventory.summary.contextUnavailableCount).toBeGreaterThanOrEqual(2);
+  expect(await readRows(ids)).toEqual(before);
+
+  const { body } = await apply(ids).expect(200);
+  expect(body.records).toMatchObject([
+    { classificationId: ids[0], resultStatusId: 'unchanged' },
+    { classificationId: ids[1], resultStatusId: 'queued_fresh_runtime_evaluation' },
+    { classificationId: ids[2], resultStatusId: 'queued_fresh_runtime_evaluation',
+      reasonIds: expect.arrayContaining(['pending_question_cleanup_current_state_unavailable']) },
+  ]);
+  expect(body.sideEffects.learningWritten).toBe(false);
+  const saved = await readRows(ids);
+  expect(saved[0]).toEqual(before[0]);
+  expect(saved.slice(1)).toMatchObject(ids.slice(1).map(id => ({
+    id, status: 'pending_retry', library_id: null, policy_question: null,
+  })));
+  expect(saved[2].metadata.classification_details.outcome_link.runtime_question_answer).toEqual(receipt);
+  const { body: replay } = await apply(ids).expect(200);
+  expect(replay.records.slice(1).map(row => row.replayReceipt))
+    .toEqual(body.records.slice(1).map(row => row.replayReceipt));
+  expect(await readRows(ids)).toEqual(saved);
+});
+
 test.each([
   ['changed context', 43, { contextVersion: '2026-11-20T00:00:00Z' }, 'policy_context_changed'],
   ['disabled policy', 44, () => ({ policyId: disabledPolicyId }), 'current_state_unavailable'],
