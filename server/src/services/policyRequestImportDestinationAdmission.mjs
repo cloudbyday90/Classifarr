@@ -48,6 +48,7 @@ import {
 import {
   buildPolicyFinalOutcomeAudit,
 } from './policyFinalOutcomeNormalizer.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_VERSION =
   'policy.request_import_destination_admission.v1';
@@ -98,11 +99,6 @@ function normalizeString(value, maximumLength = 160) {
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, maximumLength);
-}
-
-function normalizePositiveInteger(value) {
-  const number = Number(value);
-  return Number.isInteger(number) && number > 0 ? number : null;
 }
 
 function uniqueReasonCodes(reasonCodes = []) {
@@ -312,10 +308,10 @@ function buildPolicyRequestImportDestinationAdmission({
     );
   }
 
-  const classificationId = normalizePositiveInteger(
+  const classificationId = normalizeDatabaseBigintId(
     asObject(classification).classification_id ?? asObject(classification).classificationId
   );
-  if (!classificationId) {
+  if (classificationId === null) {
     return buildNotApplicableResult(
       POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_CLASSIFICATION_REFERENCE
     );

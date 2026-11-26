@@ -30,6 +30,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   task IDs so valid retries can commit and reconcile at large IDs.
 - **Classification intake** — Lifecycle receipts retain exact BIGINT queue
   task IDs for private reporting after queue cleanup.
+- **Request-import outcomes** — Terminal queue results retain exact BIGINT
+  History references in their event keys and outcome summaries.
 
 ## [v0.49.5-beta] - 2026-11-24
 

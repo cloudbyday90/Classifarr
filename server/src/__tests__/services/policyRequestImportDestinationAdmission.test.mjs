@@ -103,6 +103,52 @@ function queueQuestionReduction(overrides = {}) {
 }
 
 describe('policyRequestImportDestinationAdmission', () => {
+  test.each([
+    [{ classification_id: '87', classificationId: 88 }, 87],
+    [{ classification_id: null, classificationId: '87' }, 87],
+    [{ classification_id: 9007199254740991 }, 9007199254740991],
+    [{ classification_id: '9007199254740992' }, '9007199254740992'],
+    [{ classification_id: '9007199254740993' }, '9007199254740993'],
+    [{ classification_id: '9223372036854775807' }, '9223372036854775807'],
+  ])('carries the exact History reference for %p', (identity, expected) => {
+    const result = buildPolicyRequestImportDestinationAdmission({
+      task: task(),
+      classification: classification(identity),
+      queueQuestionReduction: queueQuestionReduction(),
+    });
+
+    const sourceEventId = `classification:${expected}`;
+    expect(result).toMatchObject({
+      statusId: POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_STATUS_IDS.OUTCOME_ONLY,
+      event: { sourceEventId },
+      finalOutcome: { itemId: expected },
+      learningIntake: { sourceEventId },
+      learningGuard: { finalOutcome: { itemId: expected } },
+      learning: { canWriteLearning: false, profileRefreshQueued: false },
+      questionReduction: { statusId: 'valid' },
+      audit: { ok: true },
+    });
+  });
+
+  test.each([true, [87], {}, 87.5, 0, -1, 87n, Number.MAX_SAFE_INTEGER + 1,
+    '087', '87 ', '+87', '8.7e1', '9223372036854775808'].map(id => [id]))(
+    'omits terminal admission for invalid History reference %p', classificationId => {
+      const result = buildPolicyRequestImportDestinationAdmission({
+        task: task(),
+        classification: classification({ classification_id: classificationId, classificationId: 87 }),
+      });
+      expect(result).toMatchObject({
+        statusId: POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_STATUS_IDS.NOT_APPLICABLE,
+        reasonCodes: [POLICY_REQUEST_IMPORT_DESTINATION_ADMISSION_REASON_IDS.MISSING_CLASSIFICATION_REFERENCE],
+        event: null,
+        finalOutcome: null,
+        learningIntake: null,
+        learning: null,
+        audit: { ok: true },
+      });
+    },
+  );
+
   test('records successful request routing from queue-bound proof without inferring a requester choice', () => {
     const result = buildPolicyRequestImportDestinationAdmission({
       task: task(),
