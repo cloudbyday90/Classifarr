@@ -15,6 +15,7 @@ import {
   AI_CLASSIFICATION_EVALUATION_STATUS,
   buildSweepEvaluationArtifact,
   normalizeSweepFixtures,
+  summarizeQueueDecisionWitness,
 } from './lib/aiClassificationEvaluationSweepAdapter.mjs';
 import {
   validateAiPolicySweepFixtureDocument,
@@ -440,20 +441,6 @@ async function waitForQueueDecisionWitness(api, taskId, timeoutMs, pollMs) {
   }
 
   return null;
-}
-
-function summarizeQueueDecisionWitness(result) {
-  if (!result || result.available !== true || !result.decisionWitness) {
-    return null;
-  }
-
-  return {
-    queueTaskId: Number.isSafeInteger(result.queueTaskId) ? result.queueTaskId : null,
-    classificationId: Number.isSafeInteger(result.classificationId) ? result.classificationId : null,
-    version: result.decisionWitness.version || null,
-    algorithm: result.decisionWitness.algorithm || null,
-    fingerprint: result.decisionWitness.fingerprint || null,
-  };
 }
 
 function recordHistoryObservation({ row, historyRow, report, args, existingHistoryIds = null }) {

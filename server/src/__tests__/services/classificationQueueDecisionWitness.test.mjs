@@ -158,4 +158,32 @@ describe('classification queue decision witness persistence', () => {
       reasonId: 'queue_decision_witness_invalid',
     });
   });
+
+  test.each([
+    ['9007199254740992', '9007199254740993'],
+    ['044', 44],
+    [44, '4.4e1'],
+    [9007199254740992, '9007199254740992'],
+    ['9223372036854775808', '9223372036854775808'],
+  ])('withholds invalid or mismatched History IDs %p and %p', async (classificationId, historyId) => {
+    const readService = new ClassificationQueueDecisionWitnessReadService({
+      repository: {
+        findLatestByQueueTaskId: jest.fn().mockResolvedValue({
+          classification_id: classificationId,
+          witness: buildWitness(),
+          history_id: historyId,
+          history_status: 'completed',
+          history_method: 'ai_analysis',
+          history_confidence: 92.5,
+          history_library_id: 4,
+          history_library_name: 'Movies',
+        }),
+      },
+    });
+
+    await expect(readService.read(19)).resolves.toEqual({
+      available: false,
+      reasonId: 'queue_decision_witness_invalid',
+    });
+  });
 });

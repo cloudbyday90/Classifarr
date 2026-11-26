@@ -14,6 +14,7 @@ import {
 import {
   classificationQueueDecisionWitnessRepository,
 } from './classificationQueueDecisionWitnessRepository.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 function asPositiveInteger(value) {
   const numeric = typeof value === 'number' ? value : Number(value);
@@ -35,14 +36,14 @@ function asLibraryName(value) {
 }
 
 function buildHistoryProjection(row) {
-  const id = asPositiveInteger(row?.history_id);
+  const id = normalizeDatabaseBigintId(row?.history_id);
   const status = asIdentifier(row?.history_status);
   const method = asIdentifier(row?.history_method);
   const confidence = row?.history_confidence === null ? null : asConfidence(row?.history_confidence);
   const libraryId = row?.history_library_id === null ? null : asPositiveInteger(row?.history_library_id);
   const libraryName = row?.history_library_name === null ? null : asLibraryName(row?.history_library_name);
 
-  if (!id || !status || !method ||
+  if (id === null || !status || !method ||
       (confidence === null && row?.history_confidence !== null) ||
       (libraryId === null) !== (libraryName === null)) {
     return null;
@@ -70,9 +71,9 @@ export class ClassificationQueueDecisionWitnessReadService {
     const witnessValidation = validateClassificationQueueDecisionWitness(row.witness, {
       queueTaskId: normalizedQueueTaskId,
     });
-    const classificationId = asPositiveInteger(row.classification_id);
+    const classificationId = normalizeDatabaseBigintId(row.classification_id);
     const history = buildHistoryProjection(row);
-    if (!witnessValidation.ok || !classificationId || !history || history.id !== classificationId) {
+    if (!witnessValidation.ok || classificationId === null || !history || history.id !== classificationId) {
       return { available: false, reasonId: 'queue_decision_witness_invalid' };
     }
 

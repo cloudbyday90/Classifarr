@@ -9,6 +9,11 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 
 ## [Unreleased]
 
+### Fixed
+
+- **Queue decision evidence** — The witness endpoint and queued evaluation
+  report preserve exact History IDs above the JavaScript safe-integer limit.
+
 ## [v0.49.5-beta] - 2026-11-24
 
 [Full development record](docs/changelog/CHANGELOG-2026-11-pre-release-0.49.5.md) preserved on 2026-11-24.

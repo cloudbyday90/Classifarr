@@ -4,6 +4,7 @@ import {
   normalizeSweepFixtures,
   projectQueuedDecisionWitnessObservation,
   projectLiveObservation,
+  summarizeQueueDecisionWitness,
 } from '../../../../scripts/lib/aiClassificationEvaluationSweepAdapter.mjs';
 import {
   buildClassificationQueueDecisionWitness,
@@ -29,6 +30,28 @@ const evaluationFixture = {
     }],
   },
 };
+
+test.each([
+  [44, 44],
+  ['9007199254740992', '9007199254740992'],
+  ['9007199254740993', '9007199254740993'],
+  ['9223372036854775807', '9223372036854775807'],
+  [9007199254740992, null],
+  ['044', null],
+])('preserves the canonical History ID in the queued report for %p', (classificationId, expectedId) => {
+  const decisionWitness = {
+    version: 'classifarr.classification_queue_decision_witness.v1',
+    algorithm: 'sha256',
+    fingerprint: 'a'.repeat(64),
+  };
+
+  expect(summarizeQueueDecisionWitness({
+    available: true,
+    queueTaskId: 19,
+    classificationId,
+    decisionWitness,
+  })).toEqual({ queueTaskId: 19, classificationId: expectedId, ...decisionWitness });
+});
 
 const directResponse = {
   method: 'ai',

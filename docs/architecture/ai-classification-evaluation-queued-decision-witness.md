@@ -172,6 +172,11 @@ witness plus its bounded persisted-history projection, or a fixed
 `available=false` reason. It does not return `task_queue.payload`, raw webhook
 logs, raw history metadata, policy data, or model output.
 
+The response fields `classificationId` and `history.id` identify the same
+History row. Each is a JSON number through 9,007,199,254,740,991 and a
+canonical decimal string above that value, up to the PostgreSQL BIGINT
+maximum. The queued evaluation report preserves that representation.
+
 The exchanged local-sweep token moves from prefix-only authorization to exact
 method-and-route grants. It permits only the harness's required `GET`, `PUT`,
 and `POST` endpoints. In particular, it permits read-only queue lifecycle and

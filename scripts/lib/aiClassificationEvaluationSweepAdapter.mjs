@@ -20,6 +20,7 @@ import {
 import {
   validateClassificationQueueDecisionWitness,
 } from '../../server/src/services/classificationQueueDecisionWitness.mjs';
+import { normalizeDatabaseBigintId } from '../../server/src/services/databaseIntegerValues.mjs';
 import {
   isVersionedFixtureCandidate,
 } from './aiPolicySweepFixtureDocument.mjs';
@@ -97,6 +98,20 @@ function projectQueuedDecisionWitnessObservation({ decisionWitness, historyRow }
         nameKey: 'library_name',
       }),
     },
+  };
+}
+
+function summarizeQueueDecisionWitness(result) {
+  if (!result || result.available !== true || !result.decisionWitness) {
+    return null;
+  }
+
+  return {
+    queueTaskId: Number.isSafeInteger(result.queueTaskId) ? result.queueTaskId : null,
+    classificationId: normalizeDatabaseBigintId(result.classificationId),
+    version: result.decisionWitness.version || null,
+    algorithm: result.decisionWitness.algorithm || null,
+    fingerprint: result.decisionWitness.fingerprint || null,
   };
 }
 
@@ -216,4 +231,5 @@ export {
   normalizeSweepFixtures,
   projectQueuedDecisionWitnessObservation,
   projectLiveObservation,
+  summarizeQueueDecisionWitness,
 };
