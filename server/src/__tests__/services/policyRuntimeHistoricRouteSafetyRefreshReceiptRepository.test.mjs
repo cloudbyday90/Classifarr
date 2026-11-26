@@ -76,6 +76,30 @@ describe('PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository', () => {
     })).rejects.toThrow('did not have a pending receipt item');
   });
 
+  test.each([
+    ['81', 81],
+    ['9007199254740992', '9007199254740992'],
+    ['9007199254740993', '9007199254740993'],
+    ['9223372036854775807', '9223372036854775807'],
+  ])('binds the exact retry task ID %s', async (retryTaskId, expected) => {
+    const { repository, client } = createRepository({ query: jest.fn().mockResolvedValue({ rowCount: 1 }) });
+    await repository.markRetryQueued({ client, receiptId: RECEIPT_ID, classificationId: 19, retryTaskId });
+    expect(client.query).toHaveBeenCalledWith(
+      expect.stringContaining('retry_task_id = $5'),
+      [RECEIPT_ID, 19, 'queued', 'queued_for_current_runtime_evaluation', expected, 'requested'],
+    );
+  });
+
+  test.each([
+    true, [81], '081', '81.0', ' 81 ', '8.1e1', 0, -1, 1.5, null,
+    Number.MAX_SAFE_INTEGER + 1, '9223372036854775808',
+  ].map(value => [value]))('rejects inexact task identity %p before SQL', async retryTaskId => {
+    const { repository, client } = createRepository({ query: jest.fn().mockResolvedValue({ rowCount: 1 }) });
+    await expect(repository.markRetryQueued({ client, receiptId: RECEIPT_ID, classificationId: 19, retryTaskId }))
+      .rejects.toThrow(TypeError);
+    expect(client.query).not.toHaveBeenCalled();
+  });
+
   test('uses only primary-key receipt rows and bounded lineage traversal for reconciliation', async () => {
     const { repository, client } = createRepository({
       query: jest.fn()

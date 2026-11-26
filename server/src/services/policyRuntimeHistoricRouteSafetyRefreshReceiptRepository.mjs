@@ -28,11 +28,6 @@ const {
 
 const FINAL_RECEIPT_ITEM_STATUS_IDS = new Set([QUEUED, SKIPPED, FAILED]);
 
-function normalizePositiveInteger(value) {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
-}
-
 function assertQueryClient(client, operation) {
   if (!client || typeof client.query !== 'function') {
     throw new TypeError(`Historic route-safety refresh receipt ${operation} requires a database query client.`);
@@ -141,7 +136,7 @@ export class PolicyRuntimeHistoricRouteSafetyRefreshReceiptRepository {
     assertQueryClient(client, 'queue recording');
     assertReceiptId(receiptId);
     const normalizedClassificationId = normalizeDatabaseBigintId(classificationId);
-    const normalizedRetryTaskId = normalizePositiveInteger(retryTaskId);
+    const normalizedRetryTaskId = normalizeDatabaseBigintId(retryTaskId);
     if (!normalizedClassificationId || !normalizedRetryTaskId) {
       throw new TypeError('Historic route-safety refresh queued retry IDs must be positive integers.');
     }

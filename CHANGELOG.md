@@ -21,6 +21,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   backfill preserve exact BIGINT task IDs and readiness cursors.
 - **Classification diagnostics** — Metadata-failure details, bug reports, and
   exports retain exact queue task IDs above JavaScript's safe-integer limit.
+- **Historic route-safety refresh** — Retry receipts bind exact BIGINT queue
+  task IDs so valid retries can commit and reconcile at large IDs.
 
 ## [v0.49.5-beta] - 2026-11-24
 

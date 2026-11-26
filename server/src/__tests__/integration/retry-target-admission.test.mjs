@@ -202,6 +202,70 @@ test('historic paging and a mixed-outcome receipt keep adjacent BIGINT identitie
   expect(await snapshot()).toEqual(saved);
   expect(saved.tasks).toHaveLength(1);
 });
+
+test.each([
+  ['9007199254740992', '9007199254740993'],
+  ['9223372036854775806', '9223372036854775807'],
+])('historic retry binds adjacent queue tasks %s and %s to their own receipt items', async (firstId, secondId) => {
+  await seed(1, { historic: true });
+  await seed(100, { historic: true });
+  const sequence = (await query('SELECT last_value, is_called FROM task_queue_id_seq')).rows[0];
+  const deps = services();
+  const http = request(app(deps));
+  const base = '/api/classification/pending/route-safety-refresh';
+  try {
+    await query("SELECT setval('task_queue_id_seq', $1, false)", [firstId]);
+    const submitted = await http.post(`${base}/retry`).send({ classificationIds: [1, 100] }).expect(200);
+    expect(submitted.body.summary).toMatchObject({ requestedRecordCount: 2, queued: 2, failed: 0 });
+    const { rows } = await query(`
+      SELECT item.classification_id, item.retry_task_id, task.payload->>'tmdb_id' AS tmdb_id
+      FROM policy_runtime_historic_route_safety_refresh_receipt_items item
+      JOIN task_queue task ON task.id=item.retry_task_id
+      WHERE item.receipt_id=$1 ORDER BY item.classification_id`, [submitted.body.retryReceipt]);
+    expect(rows).toEqual([
+      { classification_id: 1, retry_task_id: firstId, tmdb_id: '889970' },
+      { classification_id: 100, retry_task_id: secondId, tmdb_id: '889971' },
+    ]);
+
+    await query("UPDATE task_queue SET status='failed' WHERE id=$1", [secondId]);
+    const saved = await snapshot();
+    const path = `${base}/receipts/${submitted.body.retryReceipt}`;
+    const expectedRecords = [
+      { classificationId: 1, executionStatusId: 'queued', executionReasonId: 'queued_for_current_runtime_evaluation',
+        reconciliationStatusId: 'queue_pending' },
+      { classificationId: 100, executionStatusId: 'queued', executionReasonId: 'queued_for_current_runtime_evaluation',
+        reconciliationStatusId: 'queue_failed' },
+    ];
+    const receipt = await http.get(path).expect(200);
+    expect(receipt.body.records).toEqual(expectedRecords);
+    const repeated = await http.get(path).expect(200);
+    expect(repeated.body).toEqual(receipt.body);
+    await request(app(deps, 'read_write', 2)).get(path).expect(404);
+    expect(await snapshot()).toEqual(saved);
+  } finally {
+    await query("SELECT setval('task_queue_id_seq', $1, $2)", [sequence.last_value, sequence.is_called]);
+  }
+});
+
+test('historic retry rolls back task admission when the requested receipt item is absent', async () => {
+  await seed(1, { historic: true });
+  const deps = services();
+  const repository = deps.historic.receiptRepository;
+  const markRetryQueued = repository.markRetryQueued.bind(repository);
+  jest.spyOn(repository, 'markRetryQueued').mockImplementation(input =>
+    markRetryQueued({ ...input, classificationId: 100 }));
+  const before = await snapshot();
+
+  const response = await request(app(deps)).post('/api/classification/pending/route-safety-refresh/retry')
+    .send({ classificationIds: [1] }).expect(200);
+  expect(response.body.records).toEqual([{ classificationId: 1, resultStatusId: 'failed', reasonId: 'retry_failed' }]);
+  const saved = await snapshot();
+  expect(saved.history).toEqual(before.history);
+  expect(saved.tasks).toEqual(before.tasks);
+  expect(saved.items).toEqual([{ classification_id: 1, execution_status: 'failed' }]);
+  expect(deps.followupService.enqueueMetadataEnrichmentTask).not.toHaveBeenCalled();
+});
+
 test.each([{ ids: Array(1) }, { ids: Object.assign(Array(2), { 0: 1 }) }])('direct historic sparse selection %# refuses before receipt work', async ({ ids }) => {
   await seed(1, { historic: true }); const before = await snapshot(), deps = services(), command = jest.spyOn(deps.retry, 'retryClassifications');
   await expect(deps.historic.run({ classificationIds: ids, actorId: 'user:1' })).rejects.toMatchObject({ name: 'ValidationError', statusCode: 400 });
