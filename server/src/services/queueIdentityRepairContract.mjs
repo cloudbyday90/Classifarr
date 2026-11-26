@@ -1,13 +1,9 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { createHash } from 'node:crypto';
-import { ConflictError, ValidationError } from '../utils/appError.mjs';
+import { ConflictError } from '../utils/appError.mjs';
 import { assertRepairRequest } from './queueIdentityRepairPayload.mjs';
 
-export function repairTaskId(value) {
-  if (!['string', 'number'].includes(typeof value) || !/^[1-9]\d{0,15}$/.test(String(value)) ||
-      !Number.isSafeInteger(Number(value))) throw new ValidationError('Invalid task ID');
-  return String(value);
-}
+export { requireQueueTaskIdText as repairTaskId } from './queueTaskId.mjs';
 
 export function repairConflict() {
   return new ConflictError('This task or its evidence changed, is incomplete, or has other work recorded. Review it again.',

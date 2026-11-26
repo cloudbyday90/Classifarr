@@ -41,6 +41,8 @@ queue processing. Queued is not classified or routed successfully.
 GET `/api/queue/identity-repair/backfill` reads up to 20 unretried receipts joined
 to failed tasks, with an optional positive `afterId` cursor. This is discovery,
 not an eligibility guarantee. No raw payload, provider URL or credential is returned.
+Readiness returns task IDs and its cursor as exact decimal strings through the
+PostgreSQL BIGINT maximum. See the [exact task ID design](queue-identity-repair-bigint-design.md).
 POST on the same path accepts exactly `items` (one to five unique task/receipt
 pairs) and `confirmRetry: true`; clients cannot supply replacement IDs.
 

@@ -89,6 +89,46 @@ describe('queueTasksApi', () => {
     expect(await checkQueueTaskMetadata(12, { signal })).toBe(response)
     expect(mockPost).toHaveBeenCalledWith('/queue/task/12/metadata-check', {}, { skipAutomaticRetry: true, signal })
   })
+  it('keeps large IDs exact through repair paths, the cursor and the selected batch', async () => {
+    const id = '9007199254740993'
+    const max = '9223372036854775807'
+    const signal = new AbortController().signal
+    const options = { skipAutomaticRetry: true, signal }
+    const confirm = { previewId: 'fixture', sameWorkAndEdition: true }
+    const retry = { receiptId: 'fixture' }
+    const batch = { items: [{ taskId: max, receiptId: 'fixture' }], confirmRetry: true }
+    await checkQueueTaskMetadata(id, { signal })
+    await getQueueIdentityRepair(id, { signal })
+    await previewQueueIdentityRepair(id, { signal })
+    await confirmQueueIdentityRepair(id, confirm, { signal })
+    await retryQueueIdentityRepair(id, retry, { signal })
+    await getQueueRepairBackfill({ afterId: max, signal })
+    await retryQueueRepairBackfill(batch, { signal })
+    expect(mockGetDataRequest.mock.calls).toEqual([
+      [`/queue/task/${id}/identity-repair`, options],
+      ['/queue/identity-repair/backfill', { ...options, params: { afterId: max } }],
+    ])
+    expect(mockPost.mock.calls).toEqual([
+      [`/queue/task/${id}/metadata-check`, {}, options],
+      [`/queue/task/${id}/identity-repair/preview`, {}, options],
+      [`/queue/task/${id}/identity-repair/confirm`, confirm, options],
+      [`/queue/task/${id}/identity-repair/retry`, retry, options],
+      ['/queue/identity-repair/backfill', batch, options],
+    ])
+  })
+  it('rejects inexact repair IDs before making any browser request', () => {
+    for (const id of [Number.MAX_SAFE_INTEGER + 1, '023', '23suffix', ['23'], '9223372036854775808']) {
+      expect(() => checkQueueTaskMetadata(id)).toThrow(TypeError)
+      expect(() => getQueueIdentityRepair(id)).toThrow(TypeError)
+      expect(() => previewQueueIdentityRepair(id)).toThrow(TypeError)
+      expect(() => confirmQueueIdentityRepair(id, {})).toThrow(TypeError)
+      expect(() => retryQueueIdentityRepair(id, {})).toThrow(TypeError)
+      expect(() => getQueueRepairBackfill({ afterId: id })).toThrow(TypeError)
+      expect(() => retryQueueRepairBackfill({ items: [{ taskId: '23' }, { taskId: id }], confirmRetry: true })).toThrow(TypeError)
+    }
+    expect(mockPost).not.toHaveBeenCalled()
+    expect(mockGetDataRequest).not.toHaveBeenCalled()
+  })
   it('reads background settings locally and writes only explicit enablement without retry', async () => {
     mockGetDataRequest.mockResolvedValueOnce({ enabled: false })
     expect(await getManualRoutingBackground(12)).toEqual({ enabled: false })

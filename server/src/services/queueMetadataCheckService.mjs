@@ -5,15 +5,13 @@ import { requireReviewActor } from './mediaIdentityReviewRepository.mjs';
 import { tmdbObservationFailure } from './tmdbObservationFailure.mjs';
 import { readQueueMetadataCheckTask } from './queueMetadataCheckRepository.mjs';
 import { readQueueIdentityEvidence } from './queueIdentityEvidenceService.mjs';
+import { requireQueueTaskIdText } from './queueTaskId.mjs';
 
 export function createQueueMetadataCheckService({ db, readProvider, now = () => new Date(), deadlineMs = 10000 }) {
   let busy = false;
   return {
     async check(actorId, rawTaskId, body, callerSignal = null) {
-      const taskId = String(rawTaskId);
-      if (!/^[1-9]\d{0,15}$/.test(taskId) || !Number.isSafeInteger(Number(taskId))) {
-        throw new ValidationError('Invalid task ID');
-      }
+      const taskId = requireQueueTaskIdText(rawTaskId);
       if (!body || Array.isArray(body) || typeof body !== 'object' || Object.keys(body).length !== 0) {
         throw new ValidationError('Metadata checks do not accept replacement identities');
       }

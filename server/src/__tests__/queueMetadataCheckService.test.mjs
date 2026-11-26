@@ -21,6 +21,18 @@ beforeEach(() => {
 const check = () => service.check(7, '23', {});
 
 describe('failed task metadata check', () => {
+  test.each([23, '9007199254740993', '9223372036854775807'])('binds %p as an exact text task ID', async id => {
+    expect(await service.check(7, id, {})).toMatchObject({ taskId: String(id), tmdbId: 42 });
+    const taskReads = db.query.mock.calls.filter(([sql]) => sql.includes('FROM task_queue'));
+    expect(taskReads.map(([, parameters]) => parameters)).toEqual([[String(id)], [String(id)]]);
+  });
+
+  test.each([[[23]], [Number.MAX_SAFE_INTEGER + 1], ['9223372036854775808']])('refuses inexact task input %p before reading', async id => {
+    await expect(service.check(7, id, {})).rejects.toMatchObject({ statusCode: 400, message: 'Invalid task ID' });
+    expect(db.query).not.toHaveBeenCalled();
+    expect(readProvider).not.toHaveBeenCalled();
+  });
+
   test('checks the saved typed ID once, does not write, and only projects safe evidence', async () => {
     const result = await check();
     expect(result).toMatchObject({ taskId: '23', tmdbId: 42, mediaType: 'movie',
@@ -109,7 +121,7 @@ describe('failed task metadata check', () => {
     await expect(service.check(7, '23', body)).rejects.toMatchObject({ statusCode: 400 });
     expect(db.query).not.toHaveBeenCalled();
   });
-  test.each(['0', '-1', '1.1', '1x', '9007199254740992'])('rejects invalid task ID %s', async id => {
+  test.each(['0', '-1', '1.1', '1x', '023'])('rejects invalid task ID %s', async id => {
     await expect(service.check(7, id, {})).rejects.toMatchObject({ statusCode: 400 });
   });
   test.each(['revision', 'config', 'actor', 'claimed', 'removed'])('rejects %s changes during I/O', async kind => {

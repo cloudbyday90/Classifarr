@@ -51,41 +51,48 @@ export function retryQueueTask(taskId) {
  * @param {number|string} taskId @param {{ signal?: AbortSignal }} options
  */
 export function checkQueueTaskMetadata(taskId, { signal } = {}) {
-  return apiClient.post(`/queue/task/${taskId}/metadata-check`, {}, { skipAutomaticRetry: true, signal })
+  return apiClient.post(`/queue/task/${requireQueueTaskId(taskId)}/metadata-check`, {}, { skipAutomaticRetry: true, signal })
 }
 
 /** @param {number|string} taskId @param {{ signal?: AbortSignal }} options */
 export function getQueueIdentityRepair(taskId, { signal } = {}) {
-  return getDataRequest(`/queue/task/${taskId}/identity-repair`, { skipAutomaticRetry: true, signal })
+  return getDataRequest(`/queue/task/${requireQueueTaskId(taskId)}/identity-repair`, { skipAutomaticRetry: true, signal })
 }
 
 /** @param {number|string} taskId @param {{ signal?: AbortSignal }} options */
 export function previewQueueIdentityRepair(taskId, { signal } = {}) {
-  return apiClient.post(`/queue/task/${taskId}/identity-repair/preview`, {}, { skipAutomaticRetry: true, signal })
+  return apiClient.post(`/queue/task/${requireQueueTaskId(taskId)}/identity-repair/preview`, {}, { skipAutomaticRetry: true, signal })
 }
 
 /** @param {number|string} taskId @param {object} data @param {{ signal?: AbortSignal }} options */
 export function confirmQueueIdentityRepair(taskId, data, { signal } = {}) {
-  return apiClient.post(`/queue/task/${taskId}/identity-repair/confirm`, data, { skipAutomaticRetry: true, signal })
+  return apiClient.post(`/queue/task/${requireQueueTaskId(taskId)}/identity-repair/confirm`, data, { skipAutomaticRetry: true, signal })
 }
 
 /** @param {number|string} taskId @param {object} data @param {{ signal?: AbortSignal }} options */
 export function retryQueueIdentityRepair(taskId, data, { signal } = {}) {
-  return apiClient.post(`/queue/task/${taskId}/identity-repair/retry`, data, { skipAutomaticRetry: true, signal })
+  return apiClient.post(`/queue/task/${requireQueueTaskId(taskId)}/identity-repair/retry`, data, { skipAutomaticRetry: true, signal })
 }
 
 /**
  * Local snapshot with checkedAt and per-item readiness; never enqueue authority.
- * @param {{ afterId?: string, signal?: AbortSignal }} options
+ * @param {{ afterId?: number|string|null, signal?: AbortSignal }} options
  */
 export function getQueueRepairBackfill({ afterId, signal } = {}) {
   return getDataRequest('/queue/identity-repair/backfill', {
-    params: afterId ? { afterId } : {}, skipAutomaticRetry: true, signal,
+    params: afterId === undefined || afterId === null ? {} : { afterId: requireQueueTaskId(afterId) },
+    skipAutomaticRetry: true, signal,
   })
 }
 
-/** @param {object} data @param {{ signal?: AbortSignal }} options */
+/**
+ * @param {{ items: Array<{ taskId: number|string, receiptId: string }>, confirmRetry: boolean }} data
+ * @param {{ signal?: AbortSignal }} options
+ */
 export function retryQueueRepairBackfill(data, { signal } = {}) {
+  if (Array.isArray(data?.items)) {
+    for (const item of data.items) requireQueueTaskId(item?.taskId)
+  }
   return apiClient.post('/queue/identity-repair/backfill', data, { skipAutomaticRetry: true, signal })
 }
 

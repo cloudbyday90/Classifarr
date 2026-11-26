@@ -17,6 +17,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   target exact BIGINT task IDs and refuse invalid task selectors.
 - **Queued evaluation** — Decision witnesses and sweep reports preserve large
   queue task IDs, and polling requires evidence tied to the submitted task.
+- **Queue identity repair** — Metadata checks, repair commands, and selected
+  backfill preserve exact BIGINT task IDs and readiness cursors.
 
 ## [v0.49.5-beta] - 2026-11-24
 

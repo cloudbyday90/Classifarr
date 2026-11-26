@@ -2,10 +2,10 @@
 import { expect, test } from '@jest/globals';
 import { assertRepairPayload, projectRepairReceipt, repairSourceVersion, repairTaskId } from '../services/queueIdentityRepairContract.mjs';
 
-test.each([null, undefined, {}, [], '01', 0, -1, 2.5, '9007199254740992'])('rejects invalid task identifier %p', id => {
+test.each([null, undefined, {}, [23], '01', 0, -1, 2.5, Number.MAX_SAFE_INTEGER + 1, '9223372036854775808'].map(id => [id]))('rejects invalid task identifier %p', id => {
   expect(() => repairTaskId(id)).toThrow('Invalid task ID');
 });
-test.each([1, '99', Number.MAX_SAFE_INTEGER])('canonical safe task ID %p', id => {
+test.each([1, '99', Number.MAX_SAFE_INTEGER, '9007199254740992', '9007199254740993', '9223372036854775807'])('canonical task ID %p', id => {
   expect(repairTaskId(id)).toBe(String(id));
 });
 test('version captures the task and linked source, not just the media ID', () => {

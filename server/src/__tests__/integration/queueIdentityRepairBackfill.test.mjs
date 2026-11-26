@@ -1,9 +1,16 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { randomUUID } from 'node:crypto';
 import { beforeEach, afterEach, expect, jest, test } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+import { requireAdmin } from '../../middleware/apiKeyAuth.mjs';
+import { errorHandler } from '../../middleware/errorHandler.mjs';
+import { registerQueueIdentityRepairRoutes } from '../../routes/queueRouteIdentityRepair.mjs';
+import { registerQueueMetadataCheckRoute } from '../../routes/queueRouteMetadataCheck.mjs';
 import { createQueueIdentityRepairService } from '../../services/queueIdentityRepairService.mjs';
 import { createQueueIdentityRepairBackfill } from '../../services/queueIdentityRepairBackfill.mjs';
+import { createQueueMetadataCheckService } from '../../services/queueMetadataCheckService.mjs';
 
 let db, actorId, provider, manual, backfill, tasks;
 beforeEach(async () => {
@@ -21,11 +28,17 @@ afterEach(async () => {
   await db.query('DELETE FROM task_queue WHERE id=ANY($1::bigint[])', [tasks]);
   await db.query('DELETE FROM users WHERE id=$1', [actorId]);
 });
-async function approved(oldId) {
-  const id = (await db.query(`INSERT INTO task_queue(task_type,source,payload,status,current_stage,error_message,attempts)
-    VALUES ('classification','manual',$1,'failed','metadata_fetch','task_metadata_not_found',1) RETURNING id`,
-  [{ media: { tmdbId: oldId, mediaType: 'movie', imdbId: `tt${oldId}` } }])).rows[0].id;
+async function addTask(oldId, taskId = null) {
+  const id = (await db.query(`INSERT INTO task_queue(id,task_type,source,payload,status,current_stage,error_message,attempts)
+    VALUES (COALESCE($1::bigint,nextval('task_queue_id_seq')),'classification','manual',$2,'failed',
+      'metadata_fetch','task_metadata_not_found',1) RETURNING id`,
+  [taskId, { media: { tmdbId: oldId, mediaType: 'movie', imdbId: `tt${oldId}` } }])).rows[0].id;
   tasks.push(id);
+  return id;
+}
+
+async function approved(oldId, taskId) {
+  const id = await addTask(oldId, taskId);
   const preview = await manual.preview(actorId, id, {});
   const { receipt } = await manual.confirm(actorId, id, { previewId: preview.previewId, sameWorkAndEdition: true });
   return { taskId: String(id), receiptId: receipt.id };
@@ -34,6 +47,46 @@ const body = items => ({ items, confirmRetry: true });
 const states = async () => (await db.query('SELECT status,attempts,max_attempts FROM task_queue WHERE id=ANY($1::bigint[]) ORDER BY id', [tasks])).rows;
 const pending = { status: 'pending', attempts: 1, max_attempts: 5 };
 const failed = { ...pending, status: 'failed' };
+
+function repairHttpApp() {
+  const app = express();
+  app.use(express.json(), (req, _res, next) => {
+    req.user = { id: actorId, role: 'admin', type: 'access' };
+    next();
+  });
+  const pass = (_req, _res, next) => next();
+  registerQueueIdentityRepairRoutes(app, { requireAdmin, limiter: pass, readLimiter: pass, service: manual, backfill });
+  registerQueueMetadataCheckRoute(app, { requireAdmin, limiter: pass,
+    service: createQueueMetadataCheckService({ db, readProvider: async () => provider }) });
+  app.use(errorHandler);
+  return app;
+}
+
+test('uses exact task identities across the HTTP diagnostic, preview, confirmation, receipt and retry', async () => {
+  const adjacentId = await addTask(10, '9007199254740992');
+  const taskId = await addTask(20, '9007199254740993');
+  const app = repairHttpApp();
+  const path = `/task/${taskId}/identity-repair`;
+  const adjacentPath = `/task/${adjacentId}/identity-repair`;
+  const { body: report } = await request(app).post(`/task/${taskId}/metadata-check`).send({}).expect(200);
+  expect(report).toMatchObject({ taskId, tmdbId: 20, identityEvidence: { candidate: { tmdbId: 1020 } } });
+  const { body: preview } = await request(app).post(`${path}/preview`).send({}).expect(200);
+  expect(preview).toMatchObject({ taskId, oldTmdbId: 20, candidate: { tmdbId: 1020 } });
+  const approval = { previewId: preview.previewId, sameWorkAndEdition: true };
+  await request(app).post(`${adjacentPath}/confirm`).send(approval).expect(409);
+  const { body: approvedResult } = await request(app).post(`${path}/confirm`).send(approval).expect(200);
+  expect(approvedResult.receipt).toMatchObject({ id: preview.previewId, taskId, retriedAt: null });
+  await request(app).post(`${path}/confirm`).send(approval).expect(200, approvedResult);
+  await request(app).get(path).expect(200, approvedResult);
+  await request(app).get(adjacentPath).expect(200, { receipt: null });
+  await request(app).post(`${adjacentPath}/retry`).send({ receiptId: preview.previewId }).expect(409);
+  const command = { receiptId: preview.previewId };
+  const { body: retried } = await request(app).post(`${path}/retry`).send(command).expect(200);
+  expect(retried.receipt).toMatchObject({ taskId, retriedAt: expect.any(String) });
+  await request(app).post(`${path}/retry`).send(command).expect(200, retried);
+  await request(app).get(path).expect(200, retried);
+  expect(await states()).toEqual([failed, pending]);
+});
 
 test('fresh discovery performs no provider I/O or writes', async () => {
   expect(await backfill.list(actorId)).toEqual({ items: [], nextCursor: null, checkedAt: expect.any(Date) });
@@ -109,11 +162,24 @@ test('busy old writer is fenced without resetting attempts', async () => {
 });
 test('five is the maximum atomic group; discovery pages remain bounded and do not imply eligibility', async () => {
   const items = [];
-  for (let i = 1; i <= 21; i++) items.push(await approved(i));
-  const first = await backfill.list(actorId);
+  for (let i = 1; i <= 20; i++) items.push(await approved(i, (9007199254740991n + BigInt(i)).toString()));
+  const last = await approved(21, '9223372036854775807');
+  const app = repairHttpApp();
+  const path = '/identity-repair/backfill';
+  const { body: first } = await request(app).get(path).expect(200);
   expect(first.items).toHaveLength(20); expect(first.nextCursor).toBe(items[19].taskId);
-  expect((await backfill.list(actorId, { afterId: first.nextCursor })).items).toHaveLength(1);
-  await backfill.run(actorId, body(items.slice(0, 5)));
+  const { body: next } = await request(app).get(path).query({ afterId: first.nextCursor }).expect(200);
+  expect(next.items).toMatchObject([last]);
+  expect(next.nextCursor).toBeNull();
+  const { body: end } = await request(app).get(path).query({ afterId: last.taskId }).expect(200);
+  expect(end).toEqual({ items: [], nextCursor: null, checkedAt: expect.any(String) });
+  await request(app).get(path).query({ afterId: '9223372036854775808' }).expect(400);
+  await request(app).post(path).send(body([last, { ...items[0], taskId: Number(items[0].taskId) }])).expect(400);
+  expect(await states()).toEqual(Array(21).fill(failed));
+  expect((await manual.receipt(actorId, last.taskId)).receipt.retriedAt).toBeNull();
+  const selected = [...items.slice(0, 4), last];
+  const { body: result } = await request(app).post(path).send(body(selected)).expect(200);
+  expect(result.receipts.map(receipt => receipt.taskId)).toEqual(selected.map(item => item.taskId));
   expect((await states()).filter(s => s.status === 'pending')).toHaveLength(5);
   expect((await states()).filter(s => s.status === 'failed')).toHaveLength(16);
 });
