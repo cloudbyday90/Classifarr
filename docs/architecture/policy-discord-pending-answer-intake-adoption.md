@@ -59,6 +59,11 @@ its bounded frame and evidence fingerprint; legacy pending state derives a
 stable classification-scoped correlation without deserializing or exposing a
 legacy question payload.
 
+The current completed-control handlers and compact pending-answer
+handler follow separate authorization paths. The
+[event reference outcome](discord-pending-answer-source-id-outcome.md)
+records current reachability and the bounded native key format.
+
 Both action types intentionally use `do_not_learn`. The guard must therefore
 return `outcome_only`, no durable write permission, and no profile-refresh
 command. A missing final-outcome write blocks the adapter. The adapter does not

@@ -17,6 +17,19 @@ import {
   buildPolicyDiscordPendingAnswerIntakeAudit,
 } from '../../services/policyDiscordPendingAnswerIntake.mjs';
 
+function nativeQuestion(evidenceFingerprint, runtimeFingerprint) {
+  return {
+    version: 'policy.runtime_question_persistence.v1',
+    runtimeQuestion: {
+      contractVersion: 'policy.runtime_question_reduction.v1',
+      frameId: 'destination_fit',
+      decisionEvidenceFingerprint: { fingerprint: runtimeFingerprint },
+    },
+    runtimeQuestionReductionPlan: { version: 'policy.runtime_question_reduction.v1' },
+    meta: { runtime_question_persistence: { evidenceFingerprint } },
+  };
+}
+
 describe('policyDiscordPendingAnswerIntake', () => {
   const validInput = {
     classification: {
@@ -31,6 +44,73 @@ describe('policyDiscordPendingAnswerIntake', () => {
     actionId: DISCORD_PENDING_ANSWER_ACTION_IDS.VERIFY_DESTINATION,
     finalOutcomeRecorded: true,
   };
+
+  test.each([
+    ['42', 42],
+    ['9007199254740992', '9007199254740992'],
+    ['9007199254740993', '9007199254740993'],
+    ['9223372036854775807', '9223372036854775807'],
+  ])('preserves exact legacy History identity %s', (id, expected) => {
+    const result = buildPolicyDiscordPendingAnswerIntake({
+      ...validInput, classification: { ...validInput.classification, id },
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      learningIntake: {
+        itemId: expected,
+        sourceEventId: `classification:${expected}:discord_pending_answer:legacy`,
+        finalOutcome: { itemId: expected },
+      },
+    });
+  });
+
+  test.each([
+    [9999999999, 'classification:9999999999:discord_pending_answer:native:'],
+    [10000000000, 'discord_pending:v2:10000000000:'],
+    ['9007199254740993', 'discord_pending:v2:9007199254740993:'],
+  ])('keeps every SHA-256 fingerprint digit at History ID %s', (id, prefix) => {
+    const fingerprint = 'a'.repeat(63) + 'b';
+    const result = buildPolicyDiscordPendingAnswerIntake({
+      ...validInput, classification: { ...validInput.classification, id, policy_question: nativeQuestion(fingerprint) },
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      learningIntake: { itemId: id, sourceEventId: prefix + fingerprint, finalOutcome: { itemId: id } },
+      learningGuard: { learning: { canWriteLearning: false }, profileRefresh: { queue: false } },
+      audit: { ok: true },
+    });
+    expect(result.learningIntake.sourceEventId.length).toBeLessThanOrEqual(120);
+  });
+
+  test('uses the full allowed token and retains the existing native fingerprint source precedence', () => {
+    const id = '9223372036854775807';
+    const sharedPrefix = 'a'.repeat(79);
+    const readKey = (...fingerprints) => buildPolicyDiscordPendingAnswerIntake({
+      ...validInput,
+      classification: { ...validInput.classification, id, policy_question: nativeQuestion(...fingerprints) },
+    }).learningIntake.sourceEventId;
+    const metaToken = sharedPrefix + '_';
+    const runtimeToken = sharedPrefix + '-';
+    const prefix = `discord_pending:v2:${id}:`;
+    expect(readKey(metaToken, runtimeToken)).toBe(prefix + metaToken);
+    expect(readKey(undefined, runtimeToken)).toBe(prefix + runtimeToken);
+    expect(readKey(metaToken)).toHaveLength(119);
+    expect(readKey(metaToken + 'x', runtimeToken)).toBe(`classification:${id}:discord_pending_answer:native:unknown`);
+    expect(readKey('invalid:token')).toBe(`classification:${id}:discord_pending_answer:native:unknown`);
+  });
+
+  test.each([true, [42], 42n, '042', '42 ', '4.2e1', Number.MAX_SAFE_INTEGER + 1,
+    '9223372036854775808'].map(id => [id]))('refuses inexact History ID %p', id => {
+    const result = buildPolicyDiscordPendingAnswerIntake({
+      ...validInput, classification: { ...validInput.classification, id },
+    });
+    expect(result).toMatchObject({
+      statusId: POLICY_DISCORD_PENDING_ANSWER_INTAKE_STATUS_IDS.NOT_APPLICABLE,
+      reasonCodes: [POLICY_DISCORD_PENDING_ANSWER_INTAKE_REASON_IDS.INVALID_CLASSIFICATION],
+      learningIntake: null,
+      learningGuard: null,
+    });
+  });
 
   it('builds a canonical, outcome-only intake from a persisted legacy pending state', () => {
     const result = buildPolicyDiscordPendingAnswerIntake(validInput);

@@ -19,6 +19,7 @@ import {
 } from './policyLearningGuard.mjs';
 import {
   POLICY_LEARNING_EVENT_SOURCE_IDS,
+  POLICY_LEARNING_INTAKE_IDENTIFIER_MAX_LENGTH,
   buildPolicyLearningGuardInput,
   buildPolicyLearningIntakeEvent,
   validatePolicyLearningIntakeEvent,
@@ -26,6 +27,7 @@ import {
 import {
   isPolicyRuntimeQuestionPersistenceEnvelope,
 } from './policyRuntimeQuestionPersistenceContract.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const POLICY_DISCORD_PENDING_ANSWER_INTAKE_VERSION =
   'policy.discord_pending_answer_intake.v1';
@@ -114,17 +116,21 @@ function normalizeDestination(value = {}) {
   };
 }
 
-function normalizeFingerprint(value) {
-  const fingerprint = normalizeString(value, 80);
-  return /^[A-Za-z0-9_-]{8,80}$/.test(fingerprint) ? fingerprint : null;
+function buildNativePendingSourceEventId(classificationId, value) {
+  const token = typeof value === 'string' ? value.trim() : '';
+  const fingerprint = /^[A-Za-z0-9_-]{8,80}$/.test(token) ? token : 'unknown';
+  const sourceEventId = `classification:${classificationId}:discord_pending_answer:native:${fingerprint}`;
+  return sourceEventId.length <= POLICY_LEARNING_INTAKE_IDENTIFIER_MAX_LENGTH
+    ? sourceEventId
+    : `discord_pending:v2:${classificationId}:${fingerprint}`;
 }
 
 function buildPersistedPendingState(classification = {}) {
   const source = asObject(classification);
-  const classificationId = normalizePositiveInteger(source.id);
+  const classificationId = normalizeDatabaseBigintId(source.id);
   const statusId = normalizeString(source.status, 80).toLowerCase();
 
-  if (!classificationId) {
+  if (classificationId === null) {
     return {
       applicable: false,
       reasonId: POLICY_DISCORD_PENDING_ANSWER_INTAKE_REASON_IDS.INVALID_CLASSIFICATION,
@@ -149,16 +155,13 @@ function buildPersistedPendingState(classification = {}) {
   const persistedQuestion = parsePersistedQuestion(source.policyQuestion ?? source.policy_question);
   if (isPolicyRuntimeQuestionPersistenceEnvelope(persistedQuestion)) {
     const runtimeQuestion = asObject(persistedQuestion.runtimeQuestion);
-    const fingerprint = normalizeFingerprint(
-      persistedQuestion.meta?.runtime_question_persistence?.evidenceFingerprint ??
-      runtimeQuestion.decisionEvidenceFingerprint?.fingerprint,
-    );
-
     return {
       applicable: true,
       reasonId: null,
       classificationId,
-      sourceEventId: `classification:${classificationId}:discord_pending_answer:native:${fingerprint || 'unknown'}`,
+      sourceEventId: buildNativePendingSourceEventId(classificationId,
+        persistedQuestion.meta?.runtime_question_persistence?.evidenceFingerprint ??
+        runtimeQuestion.decisionEvidenceFingerprint?.fingerprint),
       question: {
         frameId: normalizeString(runtimeQuestion.frameId, 80) || QUESTION_FRAME_IDS.MISSING_EVIDENCE,
         stale: runtimeQuestion.stale === true,

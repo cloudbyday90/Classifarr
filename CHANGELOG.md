@@ -32,6 +32,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   task IDs for private reporting after queue cleanup.
 - **Request-import outcomes** — Terminal queue results retain exact BIGINT
   History references in their event keys and outcome summaries.
+- **Discord pending-answer intake** — Derived event keys preserve exact
+  History IDs and complete native fingerprints within the existing limit.
 
 ## [v0.49.5-beta] - 2026-11-24
 

@@ -7,6 +7,7 @@ import { createDiscordDeliveryService } from '../../services/discordDeliveryServ
 import { serializeDiscordDeliveryBody } from '../../services/discordDeliveryBody.mjs';
 import { createCorrectionComponents, createTieredComponents } from '../../services/discordNotificationComponents.mjs';
 import { buildClassificationDestinationDecision } from '../../services/classificationDestinationDecision.mjs';
+import { buildPolicyDiscordPendingAnswerIntake } from '../../services/policyDiscordPendingAnswerIntake.mjs';
 
 let database;
 let beforeWrite;
@@ -240,6 +241,51 @@ test.each([
   expect(await history(id)).toEqual(before);
   expect(await corrections(id)).toEqual([]);
   expect(routeToArr).not.toHaveBeenCalled();
+});
+
+test('loaded pending rows retain exact provenance and completed controls cannot act on either row', async () => {
+  const cases = [
+    { id: '9007199254741080', action: 'verify_yes', kind: 'confidence', intakeAction: 'verify_destination' },
+    { id: '9007199254741081', action: 'reclassify', kind: 'classification', intakeAction: 'correct_destination' },
+  ];
+  const fingerprint = 'a'.repeat(63) + 'b';
+  for (const { id, action, kind, intakeAction } of cases) {
+    await insertHistory(id);
+    await insertDeliveredReceipt(id, 'completed', kind);
+    const native = action === 'reclassify';
+    if (native) {
+      await query('UPDATE classification_history SET policy_question=$2::jsonb WHERE id=$1', [id, {
+        version: 'policy.runtime_question_persistence.v1',
+        runtimeQuestion: { contractVersion: 'policy.runtime_question_reduction.v1', frameId: 'destination_fit' },
+        runtimeQuestionReductionPlan: { version: 'policy.runtime_question_reduction.v1' },
+        meta: { runtime_question_persistence: { evidenceFingerprint: fingerprint } },
+      }]);
+    }
+    const before = await history(id);
+    const click = completedClick(id, action, kind);
+    await handleInteraction(click);
+    expect(click.followUp).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining('Open Classifarr') }));
+    expect(await history(id)).toEqual(before);
+    expect(await corrections(id)).toEqual([]);
+    expect(routeToArr).not.toHaveBeenCalled();
+
+    const result = buildPolicyDiscordPendingAnswerIntake({
+      classification: before,
+      destination: { libraryId: destination.id, libraryName: destination.name },
+      actionId: intakeAction,
+      finalOutcomeRecorded: true,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      statusId: 'outcome_only',
+      learningIntake: {
+        itemId: id,
+        sourceEventId: native ? `discord_pending:v2:${id}:${fingerprint}` : `classification:${id}:discord_pending_answer:legacy`,
+        finalOutcome: { itemId: id },
+      },
+      learningGuard: { learning: { canWriteLearning: false }, profileRefresh: { queue: false } },
+    });
+  }
 });
 
 test.each([['9007199254740998', 'reclassify', 'classification'], [7153, 'verify_no', 'confidence']])(
