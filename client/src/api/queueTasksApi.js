@@ -17,6 +17,13 @@
  */
 
 import { apiClient, getDataRequest } from './core'
+import { canonicalDatabaseBigintId } from '../utils/databaseBigintId'
+
+function requireQueueTaskId(taskId) {
+  const id = canonicalDatabaseBigintId(taskId)
+  if (id === null) throw new TypeError('Valid task id is required')
+  return id
+}
 
 export function getRetryReadiness() {
   return getDataRequest('/queue/retry-readiness', { skipAutomaticRetry: true })
@@ -36,7 +43,7 @@ export function getQueueFailed(limit = 20) {
 }
 
 export function retryQueueTask(taskId) {
-  return apiClient.post(`/queue/task/${taskId}/retry`)
+  return apiClient.post(`/queue/task/${requireQueueTaskId(taskId)}/retry`)
 }
 
 /**
@@ -83,23 +90,21 @@ export function retryQueueRepairBackfill(data, { signal } = {}) {
 }
 
 export function dismissQueueTask(taskId) {
-  return apiClient.post(`/queue/task/${taskId}/dismiss`)
+  return apiClient.post(`/queue/task/${requireQueueTaskId(taskId)}/dismiss`)
 }
 
 export function cancelQueueTask(taskId) {
-  return apiClient.post(`/queue/task/${taskId}/cancel`)
+  return apiClient.post(`/queue/task/${requireQueueTaskId(taskId)}/cancel`)
 }
 
 export function classifyQueueTask(taskId, data) {
   // success means selection saved; inspect data.routing.routed and .recorded.
-  return apiClient.post(`/queue/tasks/${taskId}/classify`, data, { skipAutomaticRetry: true })
+  return apiClient.post(`/queue/tasks/${requireQueueTaskId(taskId)}/classify`, data, { skipAutomaticRetry: true })
 }
 
 function manualRoutingPath(classificationId) {
-  const id = typeof classificationId === 'number' && Number.isSafeInteger(classificationId)
-    ? String(classificationId)
-    : classificationId
-  if (typeof id !== 'string' || !/^[1-9][0-9]{0,18}$/.test(id) || BigInt(id) > 9223372036854775807n) {
+  const id = canonicalDatabaseBigintId(classificationId)
+  if (id === null) {
     throw new TypeError('Valid classification ID is required')
   }
   return `/queue/manual-routing/${id}`

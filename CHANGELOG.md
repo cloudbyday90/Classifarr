@@ -13,6 +13,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 
 - **Queue decision evidence** — The witness endpoint and queued evaluation
   report preserve exact History IDs above the JavaScript safe-integer limit.
+- **Queue task actions** — Retry, dismiss, cancel, and manual classification
+  target exact BIGINT task IDs and refuse invalid task selectors.
 
 ## [v0.49.5-beta] - 2026-11-24
 

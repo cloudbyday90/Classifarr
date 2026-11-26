@@ -171,22 +171,46 @@ describe('queueTasksApi', () => {
 
   it('retryQueueTask calls POST with task id in URL', async () => {
     mockPost.mockResolvedValueOnce({ data: { retried: true } })
-    const result = await retryQueueTask('t1')
-    expect(mockPost).toHaveBeenCalledWith('/queue/task/t1/retry')
+    const result = await retryQueueTask(1)
+    expect(mockPost).toHaveBeenCalledWith('/queue/task/1/retry')
     expect(result).toEqual({ data: { retried: true } })
   })
 
   it('dismissQueueTask calls POST with task id in URL', async () => {
     mockPost.mockResolvedValueOnce({ data: { dismissed: true } })
-    const result = await dismissQueueTask('t2')
-    expect(mockPost).toHaveBeenCalledWith('/queue/task/t2/dismiss')
+    const result = await dismissQueueTask('2')
+    expect(mockPost).toHaveBeenCalledWith('/queue/task/2/dismiss')
     expect(result).toEqual({ data: { dismissed: true } })
   })
 
   it('cancelQueueTask calls POST with task id in URL', async () => {
     mockPost.mockResolvedValueOnce({ data: { cancelled: true } })
-    const result = await cancelQueueTask('t3')
-    expect(mockPost).toHaveBeenCalledWith('/queue/task/t3/cancel')
+    const result = await cancelQueueTask(3)
+    expect(mockPost).toHaveBeenCalledWith('/queue/task/3/cancel')
     expect(result).toEqual({ data: { cancelled: true } })
+  })
+
+  it.each(['9007199254740992', '9007199254740993', '9223372036854775807'])('keeps %s exact in all four action URLs', async (id) => {
+    const selection = { library_id: 4 }
+    await retryQueueTask(id)
+    await dismissQueueTask(id)
+    await cancelQueueTask(id)
+    await classifyQueueTask(id, selection)
+    expect(mockPost.mock.calls).toEqual([
+      [`/queue/task/${id}/retry`],
+      [`/queue/task/${id}/dismiss`],
+      [`/queue/task/${id}/cancel`],
+      [`/queue/tasks/${id}/classify`, selection, { skipAutomaticRetry: true }],
+    ])
+  })
+
+  it('refuses invalid queue task IDs before any action request', () => {
+    for (const id of [0, 2.5, Number.MAX_SAFE_INTEGER + 1, '01', '1suffix', '1e2', ' 1', '../1', ['1'], '9223372036854775808']) {
+      expect(() => retryQueueTask(id)).toThrow('Valid task id is required')
+      expect(() => dismissQueueTask(id)).toThrow('Valid task id is required')
+      expect(() => cancelQueueTask(id)).toThrow('Valid task id is required')
+      expect(() => classifyQueueTask(id, { library_id: 4 })).toThrow('Valid task id is required')
+    }
+    expect(mockPost).not.toHaveBeenCalled()
   })
 })
