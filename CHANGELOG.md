@@ -9,6 +9,11 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 
 ## [Unreleased]
 
+### Changed
+
+- **Queue evidence verification** — PostgreSQL regression coverage verifies
+  that exact task IDs and attempts stay bound through question reduction.
+
 ### Fixed
 
 - **Queue decision evidence** — The witness endpoint and queued evaluation
