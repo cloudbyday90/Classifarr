@@ -10,12 +10,14 @@
 
 import * as db from '../config/database.mjs';
 import { NotFoundError, ValidationError } from '../utils/appError.mjs';
+import { MAX_DATABASE_BIGINT_ID, normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { applyPgvectorRecallSettings, resolvePgvectorRecallTuning } from './pgvectorRecallTuning.mjs';
 
 const DEFAULT_SAMPLE_SIZE = 3;
 const MAX_SAMPLE_SIZE = 10;
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 25;
+const CLASSIFICATION_ID_ALIASES = ['classification_id', 'classificationId'];
 
 function parseBoundedInteger(value, {
   name,
@@ -36,13 +38,24 @@ function parseBoundedInteger(value, {
   return parsed;
 }
 
+function readRecallAuditClassificationId(options) {
+  // Express's simple parser leaves bracketed names literal and puts repeats in arrays.
+  const hasBracketKey = Object.keys(options).some((key) =>
+    CLASSIFICATION_ID_ALIASES.some((alias) => key.startsWith(`${alias}[`)));
+  const values = CLASSIFICATION_ID_ALIASES
+    .filter((key) => Object.hasOwn(options, key) && options[key] != null)
+    .map((key) => options[key] === '' ? '' : normalizeDatabaseBigintId(options[key]));
+
+  if (hasBracketKey || values.includes(null) || new Set(values).size > 1) {
+    throw new ValidationError(
+      `classification_id must use one decimal value from 1 to ${MAX_DATABASE_BIGINT_ID} without leading zeros. If both aliases are supplied, they must agree.`,
+    );
+  }
+  return values[0] || null;
+}
+
 function normalizeRecallAuditOptions(options = {}) {
-  const classificationId = parseBoundedInteger(options.classification_id ?? options.classificationId, {
-    name: 'classification_id',
-    defaultValue: null,
-    min: 1,
-    max: Number.MAX_SAFE_INTEGER,
-  });
+  const classificationId = readRecallAuditClassificationId(options);
   const requestedSampleSize = parseBoundedInteger(options.sample_size ?? options.sampleSize, {
     name: 'sample_size',
     defaultValue: DEFAULT_SAMPLE_SIZE,

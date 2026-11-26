@@ -102,6 +102,14 @@ GET /api/rag/retrieval/recall-audit?sample_size=3&limit=10
 GET /api/rag/retrieval/recall-audit?classification_id=12345&limit=10
 ```
 
+The optional `classification_id` selector also accepts `classificationId`.
+Use a canonical positive decimal ID through `9223372036854775807`.
+Omission or an empty selector samples recent eligible rows. Repeated,
+bracketed, malformed or conflicting selectors return 400. A valid ID
+with no eligible embedding returns 404. JSON returns safe History IDs as
+numbers and larger IDs as decimal strings. See the
+[History selector design](pgvector-recall-audit-history-id-design.md).
+
 Response:
 
 ```json

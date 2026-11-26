@@ -105,6 +105,56 @@ describe('pgvectorRecallAuditService', () => {
     expect(dbClient.query).not.toHaveBeenCalled();
   });
 
+  it.each([
+    { classification_id: ['42', '42'] },
+    { classificationId: ['42'] },
+    { 'classificationId[0]': '42' },
+    { 'classification_id[]': '42' },
+    { classificationId: { value: '42' } },
+    { classification_id: ' 42 ' },
+    { classification_id: '042' },
+    { classification_id: '42e0' },
+    { classification_id: '42.0' },
+    { classification_id: 0 },
+    { classification_id: Number.MAX_SAFE_INTEGER + 1 },
+    { classification_id: '9223372036854775808' },
+    { classification_id: '42', classificationId: '43' },
+    { classification_id: '', classificationId: '42' },
+    { classification_id: '42', classificationId: false },
+  ])('refuses an invalid or ambiguous selector before reading data (%p)', async options => {
+    const dbClient = createMockDb();
+    await expect(runPgvectorRecallAudit(options, { dbClient })).rejects.toThrow(ValidationError);
+    expect(dbClient.query).not.toHaveBeenCalled();
+    expect(dbClient.withTransaction).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    [{ classification_id: '100', classificationId: 100 }, 100],
+    [{ classification_id: null, classificationId: '100' }, 100],
+    [{ classification_id: '9007199254740992' }, '9007199254740992'],
+    [{ classificationId: '9007199254740993' }, '9007199254740993'],
+    [{ classification_id: '9223372036854775807', classificationId: '9223372036854775807' }, '9223372036854775807'],
+  ])('binds the exact selector and echoes the compatible JSON type (%p)', async (options, id) => {
+    const dbClient = createMockDb({ sources: [{ ...source, classification_id: id }] });
+    const result = await runPgvectorRecallAudit({ ...options, sample_size: '10' }, { dbClient });
+
+    expect(dbClient.query).toHaveBeenCalledWith(expect.stringContaining('ce.classification_id = $1'), [id, 1]);
+    expect(result.options).toEqual({ classification_id: id, sample_size: 1, limit: 10 });
+    expect(result.samples[0].source.classification_id).toBe(id);
+  });
+
+  it.each([
+    { classification_id: '' },
+    { classificationId: null },
+    { classification_id: '', classificationId: '' },
+  ])('keeps sampling when the selector is empty (%p)', async options => {
+    const dbClient = createMockDb();
+    const result = await runPgvectorRecallAudit(options, { dbClient });
+
+    expect(result.options).toEqual({ classification_id: null, sample_size: 3, limit: 10 });
+    expect(dbClient.query).toHaveBeenCalledWith(expect.any(String), [3]);
+  });
+
   it('returns an empty audit when no sample source is available', async () => {
     const dbClient = createMockDb({ sources: [] });
 

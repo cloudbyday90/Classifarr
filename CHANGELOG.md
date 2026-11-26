@@ -36,6 +36,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   History IDs and complete native fingerprints within the existing limit.
 - **Manual corrections** — Correction outcomes, evidence, and receipts stay
   bound to the selected History row for exact BIGINT IDs.
+- **pgvector recall audit** — Target exact BIGINT History IDs and reject
+  malformed or conflicting selectors before querying embeddings.
 
 ## [v0.49.5-beta] - 2026-11-24
 

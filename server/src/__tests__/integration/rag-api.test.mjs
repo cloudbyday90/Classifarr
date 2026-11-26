@@ -26,7 +26,7 @@ import request from 'supertest';
 import express from 'express';
 import bodyParser from 'body-parser';
 
-import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp, getPool } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
@@ -49,6 +49,8 @@ const { ragLoopMetricsCollector } = await import('../../services/ragLoopMetricsC
 const { manualBackfillService } = await import('../../services/manualBackfillService.mjs');
 const { embeddingProvider } = await import('../../services/embeddingProvider.mjs');
 const { router: ragRouter } = await import('../../routes/rag.mjs');
+const { authenticateToken, requireAdmin } = await import('../../middleware/auth.mjs');
+const { generateAccessToken } = await import('../../services/auth.mjs');
 const app = express();
 app.use(bodyParser.json());
 app.use('/api/rag', ragRouter);
@@ -654,6 +656,16 @@ describe('RAG API Integration Tests', () => {
     });
 
     describe('GET /api/rag/retrieval/recall-audit', () => {
+        const auditPath = '/api/rag/retrieval/recall-audit';
+        const authenticatedApp = createIntegrationTestApp({
+            basePath: '/api/rag', router: ragRouter, middleware: [authenticateToken, requireAdmin],
+        });
+        let adminToken;
+
+        beforeAll(async () => {
+            adminToken = await generateAccessToken({ id: 1, username: 'recall-audit-admin', role: 'admin' });
+        });
+
         beforeEach(async () => {
             await pool.query('TRUNCATE TABLE classification_embeddings RESTART IDENTITY CASCADE');
             await clearClassificationHistoryFixtures(pool);
@@ -686,6 +698,79 @@ describe('RAG API Integration Tests', () => {
                 .expect(400);
 
             expect(response.body.error).toContain('limit must be an integer');
+        });
+
+        it('requires administrator access to audit a History row', async () => {
+            const target = `${auditPath}?classification_id=9007199254740993`;
+            const userToken = await generateAccessToken({ id: 2, username: 'recall-audit-member', role: 'user' });
+            await request(authenticatedApp).get(target).expect(401);
+            await request(authenticatedApp).get(target).set('Authorization', `Bearer ${userToken}`).expect(403);
+        });
+
+        it('uses the exact History selector and returns exact neighbor IDs through PostgreSQL', async () => {
+            const ids = [42, '9007199254740992', '9007199254740993', '9223372036854775807'];
+            const { rows: [library] } = await pool.query(`
+                INSERT INTO libraries (external_id, name, media_type)
+                VALUES ('recall-audit-library', 'Recall audit library', 'movie') RETURNING id
+            `);
+
+            const { rows: [{ dimensions }] } = await pool.query(`
+                SELECT atttypmod AS dimensions FROM pg_attribute
+                WHERE attrelid = 'classification_embeddings'::regclass AND attname = 'embedding' AND NOT attisdropped
+            `);
+
+            // Give each embedding a distinct direction with no zero vectors.
+            for (const [index, id] of ids.entries()) {
+                await pool.query(`
+                    INSERT INTO classification_history (id, tmdb_id, media_type, title, library_id)
+                    VALUES ($1, $2, 'movie', $3, $4)
+                `, [id, 42001 + index, `Recall audit sample ${index}`, library.id]);
+                await pool.query(`
+                    INSERT INTO classification_embeddings (classification_id, embedding, embedding_dims, provider, model)
+                    VALUES ($1, (ARRAY[1.0, $2::float8] || array_fill(0.0::float8, ARRAY[$3::integer - 2]))::vector,
+                            $3, 'test', 'model')
+                `, [id, index, dimensions]);
+            }
+
+            for (const [index, id] of ids.entries()) {
+                const alias = index % 2 === 0 ? 'classificationId' : 'classification_id';
+                const { body } = await request(authenticatedApp).get(auditPath)
+                    .set('Authorization', `Bearer ${adminToken}`).query({ [alias]: id, sample_size: 2, limit: 3 })
+                    .expect(200);
+                expect(body.options).toEqual({ classification_id: id, sample_size: 1, limit: 3 });
+                expect(body.summary.sample_count).toBe(1);
+                expect(body.samples[0].source).toMatchObject({ classification_id: id, title: `Recall audit sample ${index}` });
+                const expectedNeighbors = ids.filter((otherId) => otherId !== id);
+                expect(body.samples[0].exact_top.map((row) => row.classification_id)).toEqual(
+                    expect.arrayContaining(expectedNeighbors),
+                );
+                expect(body.samples[0].approximate_top.map((row) => row.classification_id)).toEqual(
+                    expect.arrayContaining(expectedNeighbors),
+                );
+            }
+        });
+
+        it('returns 404 for a valid large selector with no eligible embedding', async () => {
+            await request(authenticatedApp).get(`${auditPath}?classificationId=9223372036854775807`)
+                .set('Authorization', `Bearer ${adminToken}`).expect(404);
+        });
+
+        it.each([
+            'classification_id=42&classification_id=42',
+            'classificationId%5B0%5D=42',
+            'classification_id=42&classificationId=43',
+            'classification_id=&classificationId=42',
+            'classificationId=9223372036854775808',
+        ])('refuses a malformed or ambiguous query (%s)', async query => {
+            await request(authenticatedApp).get(`${auditPath}?${query}`)
+                .set('Authorization', `Bearer ${adminToken}`).expect(400);
+        });
+
+        it('preserves sampling with an explicit empty selector', async () => {
+            const { body } = await request(authenticatedApp).get(`${auditPath}?classificationId=&sample_size=2`)
+                .set('Authorization', `Bearer ${adminToken}`).expect(200);
+            expect(body.options).toEqual({ classification_id: null, sample_size: 2, limit: 10 });
+            expect(body.samples).toEqual([]);
         });
     });
 
