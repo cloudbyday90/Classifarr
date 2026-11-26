@@ -42,6 +42,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   decision IDs exact so distinct records retain their own row identity.
 - **Native-intent reversion** — Bind new reconciliation holds to the exact
   rollback event for their policy and preserve large event IDs during reentry.
+- **Native-intent rollback snapshots** — Restore the requested snapshot and
+  its intended authority with exact BIGINT IDs in replay and audit records.
 
 ## [v0.49.5-beta] - 2026-11-24
 

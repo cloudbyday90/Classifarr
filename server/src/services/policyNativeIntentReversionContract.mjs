@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_CONVERSION_ACTOR_SOURCE_IDS,
 } from './policyConversionActorSources.mjs';
@@ -198,8 +199,9 @@ function validateSnapshotManifest({ snapshot, policy }) {
 }
 
 function determineReversionTarget({ snapshot, intents = [] } = {}) {
-  const snapshotIntentId = Number(snapshot?.intent_id);
-  const snapshotIntent = asArray(intents).find(intent => Number(intent.id) === snapshotIntentId) || null;
+  const snapshotIntentId = normalizeDatabaseBigintId(snapshot?.intent_id);
+  const snapshotIntent = snapshotIntentId === null ? null :
+    asArray(intents).find(intent => normalizeDatabaseBigintId(intent.id) === snapshotIntentId);
   const activeIntents = asArray(intents).filter(intent => intent.active === true);
 
   if (!snapshotIntent || Number(snapshot?.snapshot_version) !== Number(snapshotIntent.intent_version)) {
@@ -218,26 +220,31 @@ function determineReversionTarget({ snapshot, intents = [] } = {}) {
     };
   }
 
-  if (snapshotIntent.active === true && activeIntents.length === 1 && Number(activeIntents[0].id) === snapshotIntentId) {
+  const activeIntent = activeIntents[0] || null;
+  const activeIntentId = normalizeDatabaseBigintId(activeIntent?.id);
+  if (snapshotIntent.active === true && activeIntentId === snapshotIntentId) {
     return {
       ok: true,
       targetId: POLICY_NATIVE_INTENT_REVERSION_TARGET_IDS.COMPATIBILITY_BRIDGE,
       snapshotIntent,
       activeIntent: snapshotIntent,
+      snapshotIntentId,
+      activeIntentId,
     };
   }
 
-  const activeIntent = activeIntents[0] || null;
   if (
     snapshotIntent.active === false &&
-    activeIntent &&
-    Number(snapshotIntent.replaced_by_intent_id) === Number(activeIntent.id)
+    activeIntentId !== null &&
+    normalizeDatabaseBigintId(snapshotIntent.replaced_by_intent_id) === activeIntentId
   ) {
     return {
       ok: true,
       targetId: POLICY_NATIVE_INTENT_REVERSION_TARGET_IDS.PREVIOUS_NATIVE_INTENT,
       snapshotIntent,
       activeIntent,
+      snapshotIntentId,
+      activeIntentId,
     };
   }
 

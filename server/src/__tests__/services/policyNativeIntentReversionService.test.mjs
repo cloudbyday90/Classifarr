@@ -278,6 +278,45 @@ describe('policyNativeIntentReversionService', () => {
     expect(dbClient.withTransaction).not.toHaveBeenCalled();
   });
 
+  test.each([true, [901], '0901', ' 901', '901.0', '9.01e2', Number.MAX_SAFE_INTEGER + 1, '9223372036854775808'])(
+    'refuses a noncanonical snapshot selector before opening a transaction (%p)', async snapshotId => {
+      const dbClient = { withTransaction: jest.fn() };
+      const result = await applyPolicyNativeIntentReversion({ dbClient, ...request({ snapshotId }) });
+
+      expect(result.validation.issues[0].riskId).toBe(POLICY_NATIVE_INTENT_REVERSION_RISK_IDS.SNAPSHOT_NOT_FOUND);
+      expect(dbClient.withTransaction).not.toHaveBeenCalled();
+    },
+  );
+
+  test('does not replay a restored snapshot with a different identity', async () => {
+    const client = createClient({
+      rollbackSnapshot: snapshot({ id: '9007199254740992', restored_at: '2026-07-14T11:00:00.000Z' }),
+    });
+    const result = await applyPolicyNativeIntentReversion({
+      dbClient: { withTransaction: work => work(client) },
+      ...request({ snapshotId: '9007199254740993' }),
+    });
+
+    expect(result).toMatchObject({
+      statusId: POLICY_NATIVE_INTENT_REVERSION_STATUS_IDS.BLOCKED_BY_SNAPSHOT,
+      snapshotId: '9007199254740993',
+    });
+  });
+
+  test('refuses an adjacent intent that does not match the direct successor', async () => {
+    const [prior, active] = replacementIntents();
+    const client = createClient({ intents: [
+      { ...prior, replaced_by_intent_id: '9007199254740992' },
+      { ...active, id: '9007199254740993' },
+    ] });
+    const result = await applyPolicyNativeIntentReversion({
+      dbClient: { withTransaction: work => work(client) }, ...request(),
+    });
+
+    expect(result.validation.issues[0].riskId).toBe(POLICY_NATIVE_INTENT_REVERSION_RISK_IDS.AUTHORITY_MISMATCH);
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('UPDATE policy_intents'), expect.anything());
+  });
+
   test('requires an explicit bounded reason code and a transaction boundary', async () => {
     const invalidActionResult = await applyPolicyNativeIntentReversion({
       dbClient: { withTransaction: jest.fn() },

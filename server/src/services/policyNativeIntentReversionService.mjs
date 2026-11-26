@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_NATIVE_INTENT_REVERSION_RISK_IDS,
   POLICY_NATIVE_INTENT_REVERSION_STATUS_IDS,
@@ -44,7 +45,7 @@ async function applyPolicyNativeIntentReversion({
   const executionTime = normalizeTimestamp(now);
   const evaluatedAt = executionTime.toISOString();
   const normalizedPolicyId = normalizePositiveInteger(policyId);
-  const normalizedSnapshotId = normalizePositiveInteger(snapshotId);
+  const normalizedSnapshotId = normalizeDatabaseBigintId(snapshotId);
   const actionValidation = validateReversionAction(action);
 
   if (!normalizedPolicyId || !normalizedSnapshotId) {
@@ -98,7 +99,7 @@ async function applyPolicyNativeIntentReversion({
         snapshotId: normalizedSnapshotId,
         policyId: Number(policy.id),
       });
-      if (!snapshot) {
+      if (!snapshot || normalizeDatabaseBigintId(snapshot.id) !== normalizedSnapshotId) {
         return buildPolicyNativeIntentReversionResult({
           statusId: POLICY_NATIVE_INTENT_REVERSION_STATUS_IDS.BLOCKED_BY_SNAPSHOT,
           evaluatedAt,
@@ -114,7 +115,7 @@ async function applyPolicyNativeIntentReversion({
           statusId: POLICY_NATIVE_INTENT_REVERSION_STATUS_IDS.ALREADY_REVERTED,
           evaluatedAt,
           policyId: Number(policy.id),
-          snapshotId: Number(snapshot.id),
+          snapshotId: normalizedSnapshotId,
           snapshotMarkedRestored: true,
         });
       }
@@ -124,7 +125,7 @@ async function applyPolicyNativeIntentReversion({
           statusId: POLICY_NATIVE_INTENT_REVERSION_STATUS_IDS.BLOCKED_BY_SNAPSHOT,
           evaluatedAt,
           policyId: Number(policy.id),
-          snapshotId: Number(snapshot.id),
+          snapshotId: normalizedSnapshotId,
           riskId: POLICY_NATIVE_INTENT_REVERSION_RISK_IDS.SNAPSHOT_EXPIRED,
           message: 'Rollback snapshot has expired and can no longer restore policy authority.',
         });
@@ -136,7 +137,7 @@ async function applyPolicyNativeIntentReversion({
           statusId: POLICY_NATIVE_INTENT_REVERSION_STATUS_IDS.BLOCKED_BY_SNAPSHOT,
           evaluatedAt,
           policyId: Number(policy.id),
-          snapshotId: Number(snapshot.id),
+          snapshotId: normalizedSnapshotId,
           riskId: manifestValidation.riskId,
           message: manifestValidation.message,
         });
@@ -152,7 +153,7 @@ async function applyPolicyNativeIntentReversion({
           statusId: POLICY_NATIVE_INTENT_REVERSION_STATUS_IDS.BLOCKED_BY_AUTHORITY,
           evaluatedAt,
           policyId: Number(policy.id),
-          snapshotId: Number(snapshot.id),
+          snapshotId: normalizedSnapshotId,
           riskId: target.riskId,
           message: target.message,
         });
@@ -161,7 +162,7 @@ async function applyPolicyNativeIntentReversion({
       const restoredAt = executionTime.toISOString();
       const deactivated = await deactivateNativeIntentForReversion({
         client,
-        intentId: Number(target.activeIntent.id),
+        intentId: target.activeIntentId,
         policyId: Number(policy.id),
         libraryId: Number(policy.library_id),
         restoredAt,
@@ -173,8 +174,8 @@ async function applyPolicyNativeIntentReversion({
       if (target.targetId === POLICY_NATIVE_INTENT_REVERSION_TARGET_IDS.PREVIOUS_NATIVE_INTENT) {
         const reactivated = await reactivatePreviousNativeIntentForReversion({
           client,
-          intentId: Number(target.snapshotIntent.id),
-          replacementIntentId: Number(target.activeIntent.id),
+          intentId: target.snapshotIntentId,
+          replacementIntentId: target.activeIntentId,
           policyId: Number(policy.id),
           libraryId: Number(policy.library_id),
           restoredAt,
@@ -186,17 +187,17 @@ async function applyPolicyNativeIntentReversion({
 
       const restoredSnapshotId = await markRollbackSnapshotRestored({
         client,
-        snapshotId: Number(snapshot.id),
+        snapshotId: normalizedSnapshotId,
         policyId: Number(policy.id),
         restoredAt,
       });
-      if (!restoredSnapshotId) {
-        throw new Error('Rollback snapshot was not available to mark as restored.');
+      if (normalizeDatabaseBigintId(restoredSnapshotId) !== normalizedSnapshotId) {
+        throw new Error('Rollback snapshot restore did not return the requested identifier.');
       }
 
       const eventId = await insertNativeIntentReversionEvent({
         client,
-        intentId: Number(target.snapshotIntent.id),
+        intentId: target.snapshotIntentId,
         policyId: Number(policy.id),
         actorType: actionValidation.normalizedAction.actorType,
         actorId: actionValidation.normalizedAction.actorId,
@@ -207,7 +208,7 @@ async function applyPolicyNativeIntentReversion({
         reasonCode: actionValidation.normalizedAction.reasonCode,
         summary: buildAppliedSummary(target.targetId),
         metadata: {
-          snapshotId: Number(snapshot.id),
+          snapshotId: normalizedSnapshotId,
           restorePath: normalizeString(snapshot.restore_path),
           targetId: target.targetId,
         },
@@ -232,7 +233,7 @@ async function applyPolicyNativeIntentReversion({
           : POLICY_NATIVE_INTENT_REVERSION_STATUS_IDS.APPLIED_TO_COMPATIBILITY,
         evaluatedAt,
         policyId: Number(policy.id),
-        snapshotId: Number(snapshot.id),
+        snapshotId: normalizedSnapshotId,
         targetId: target.targetId,
         applied: true,
         eventWritten: true,

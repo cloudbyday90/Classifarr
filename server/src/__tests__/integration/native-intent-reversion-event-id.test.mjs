@@ -1,5 +1,5 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
-import { afterEach, beforeAll, beforeEach, expect, jest, test } from '@jest/globals';
+import { afterEach, beforeAll, expect, jest, test } from '@jest/globals';
 import express from 'express';
 import request from 'supertest';
 import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
@@ -31,20 +31,38 @@ beforeAll(async () => {
   memberToken = await generateAccessToken({ id: 8, username: 'fixture-member', role: 'user' });
 });
 
-beforeEach(async () => {
-  const { rows: [sequence] } = await db.query('SELECT last_value::text AS value, is_called FROM policy_intent_migration_events_id_seq');
-  originalSequence = sequence;
-});
-
 afterEach(async () => {
-  await setEventSequence(originalSequence.value, originalSequence.is_called);
+  if (originalSequence) {
+    await setEventSequence(originalSequence.value, originalSequence.is_called);
+    originalSequence = undefined;
+  }
 });
 
 async function setEventSequence(id, isCalled = false) {
+  if (!originalSequence) {
+    const { rows: [sequence] } = await db.query('SELECT last_value::text AS value, is_called FROM policy_intent_migration_events_id_seq');
+    originalSequence = sequence;
+  }
   await db.query("SELECT setval(pg_get_serial_sequence('policy_intent_migration_events', 'id'), $1, $2)", [id, isCalled]);
 }
 
-async function seedSnapshot(label) {
+async function seedIntent(client, { policyId, libraryId, id, version, active }) {
+  const { rows: [intent] } = await client.query(`
+    INSERT INTO policy_intents (id, policy_id, library_id, schema_version, intent_version, active,
+      source, inference_state, review_behavior, validation_status)
+    VALUES (COALESCE($1::bigint, nextval('policy_intents_id_seq')), $2, $3, 1, $4, $5,
+      'native_intent', 'inferred', '{}', 'valid') RETURNING id
+  `, [id, policyId, libraryId, version, active]);
+  await client.query(`
+    INSERT INTO policy_intent_rules (intent_id, intent_role, collection, signal_type, operator,
+      values, constraint_mode, semantics, source, inference_state, sort_order)
+    VALUES ($1, 'purpose', 'purpose', 'genres', 'require_any', '{"require_any":["Animation"]}',
+      'advisory', 'identity', 'operator_declared_intent', 'inferred', 0)
+  `, [intent.id]);
+  return intent.id;
+}
+
+async function seedSnapshot(label, { snapshotId, intentId, successorId } = {}) {
   return db.withTransaction(async client => {
     const { rows: [library] } = await client.query(`
       INSERT INTO libraries (external_id, name, media_type) VALUES ($1, $1, 'movie') RETURNING id
@@ -52,28 +70,25 @@ async function seedSnapshot(label) {
     const { rows: [policy] } = await client.query(`
       INSERT INTO library_policies (library_id, name) VALUES ($1, $2) RETURNING id
     `, [library.id, label]);
-    const { rows: [intent] } = await client.query(`
-      INSERT INTO policy_intents (policy_id, library_id, schema_version, intent_version, active,
-        source, inference_state, review_behavior, validation_status)
-      VALUES ($1, $2, 1, 1, TRUE, 'native_intent', 'inferred', '{}', 'valid') RETURNING id
-    `, [policy.id, library.id]);
-    await client.query(`
-      INSERT INTO policy_intent_rules (intent_id, intent_role, collection, signal_type, operator,
-        values, constraint_mode, semantics, source, inference_state, sort_order)
-      VALUES ($1, 'purpose', 'purpose', 'genres', 'require_any', '{"require_any":["Animation"]}',
-        'advisory', 'identity', 'operator_declared_intent', 'inferred', 0)
-    `, [intent.id]);
+    const savedIntentId = await seedIntent(client, {
+      policyId: policy.id, libraryId: library.id, id: intentId, version: 1, active: !successorId,
+    });
+    if (successorId) {
+      await seedIntent(client, { policyId: policy.id, libraryId: library.id, id: successorId, version: 2, active: true });
+      await client.query('UPDATE policy_intents SET replaced_by_intent_id = $2 WHERE id = $1', [savedIntentId, successorId]);
+    }
     const manifest = {
       policy_id: policy.id, library_id: library.id, legacy_policy: {}, presets: [], routing_target: null,
       restore_sections: ['preset_attachments', 'weights', 'thresholds', 'custom_signals',
         'routing_mapping_references', 'migration_actor', 'migration_reason'],
     };
     const { rows: [snapshot] } = await client.query(`
-      INSERT INTO policy_intent_rollback_snapshots (intent_id, policy_id, snapshot_version, snapshot_payload,
+      INSERT INTO policy_intent_rollback_snapshots (id, intent_id, policy_id, snapshot_version, snapshot_payload,
         payload_redacted, restore_path, expires_at)
-      VALUES ($1, $2, 1, $3::jsonb, FALSE, $4, NOW() + INTERVAL '1 day') RETURNING id
-    `, [intent.id, policy.id, manifest, label]);
-    return { policyId: policy.id, snapshotId: snapshot.id };
+      VALUES (COALESCE($1::bigint, nextval('policy_intent_rollback_snapshots_id_seq')),
+        $2, $3, 1, $4::jsonb, FALSE, $5, NOW() + INTERVAL '1 day') RETURNING id
+    `, [snapshotId, savedIntentId, policy.id, manifest, label]);
+    return { policyId: policy.id, snapshotId: snapshot.id, intentId: savedIntentId };
   });
 }
 
@@ -160,4 +175,96 @@ test('rejects a wrong-policy or wrong-kind source without leaving a partial reve
   expect(result.statusId).toBe('failed_rolled_back');
   expect(await readState(fixture)).toMatchObject({ active: true, restored: false, hold_state: null });
   expect((await db.query('SELECT id FROM policy_intent_migration_events WHERE id = 303')).rows).toEqual([]);
+});
+
+function postReversion(policyId, snapshotId) {
+  return request(app).post(`/api/policies/${policyId}/native-intent-rollbacks/${encodeURIComponent(snapshotId)}/apply`)
+    .set('Authorization', `Bearer ${adminToken}`).send({ reason_code: action.reasonCode });
+}
+
+async function readRollbackEvent(policyId) {
+  const { rows } = await db.query(`
+    SELECT intent_id, metadata FROM policy_intent_migration_events
+    WHERE policy_id = $1 AND event_type = 'rollback_applied'
+  `, [policyId]);
+  return rows;
+}
+
+test('restores and replays the requested snapshot among adjacent same-policy snapshots', async () => {
+  const lower = '9007199254740992';
+  const upper = '9007199254740993';
+  const { policyId, intentId } = await seedSnapshot('adjacent-snapshot', { snapshotId: upper });
+  await db.query(`
+    INSERT INTO policy_intent_rollback_snapshots (id, intent_id, policy_id, snapshot_version,
+      snapshot_payload, payload_redacted, restore_path, expires_at)
+    SELECT $1, intent_id, policy_id, snapshot_version, snapshot_payload, payload_redacted,
+      'neighbor-snapshot', expires_at FROM policy_intent_rollback_snapshots WHERE id = $2
+  `, [lower, upper]);
+  const other = await seedSnapshot('snapshot-other-policy');
+
+  await postReversion(other.policyId, upper).expect(404);
+  for (const invalid of [` ${upper}`, `0${upper}`, '9223372036854775808']) {
+    await postReversion(policyId, invalid).expect(404);
+  }
+  const { body } = await postReversion(policyId, upper).expect(200);
+  expect(body).toMatchObject({ statusId: 'applied_to_compatibility', snapshotId: upper });
+  expect((await postReversion(policyId, upper).expect(200)).body)
+    .toMatchObject({ statusId: 'already_reverted', snapshotId: upper });
+
+  const { rows } = await db.query(`
+    SELECT id, restored_at IS NOT NULL AS restored FROM policy_intent_rollback_snapshots
+    WHERE policy_id = $1 ORDER BY id
+  `, [policyId]);
+  expect(rows).toEqual([{ id: lower, restored: false }, { id: upper, restored: true }]);
+  expect(await readRollbackEvent(policyId)).toEqual([
+    { intent_id: intentId, metadata: expect.objectContaining({ snapshotId: upper, restorePath: 'adjacent-snapshot' }) },
+  ]);
+});
+
+test('restores prior native authority with an exact maximum snapshot and adjacent large intents', async () => {
+  const snapshotId = '9223372036854775807';
+  const intentId = '9007199254740992';
+  const successorId = '9007199254740993';
+  const { policyId } = await seedSnapshot('exact-prior-intent', { snapshotId, intentId, successorId });
+
+  const { body } = await postReversion(policyId, snapshotId).expect(200);
+  expect(body).toMatchObject({ statusId: 'applied_to_previous_native_intent', snapshotId });
+  expect((await postReversion(policyId, snapshotId).expect(200)).body)
+    .toMatchObject({ statusId: 'already_reverted', snapshotId });
+  expect((await db.query('SELECT id, active, replaced_by_intent_id FROM policy_intents WHERE policy_id = $1 ORDER BY id',
+    [policyId])).rows).toEqual([
+    { id: intentId, active: true, replaced_by_intent_id: null },
+    { id: successorId, active: false, replaced_by_intent_id: null },
+  ]);
+  expect(await readRollbackEvent(policyId)).toEqual([
+    { intent_id: intentId, metadata: expect.objectContaining({ snapshotId }) },
+  ]);
+});
+
+test('reverts the maximum intent to compatibility with a safe numeric snapshot', async () => {
+  const intentId = '9223372036854775807';
+  const fixture = await seedSnapshot('exact-compatibility-intent', { intentId });
+  const { body } = await postReversion(fixture.policyId, fixture.snapshotId).expect(200);
+  expect(body).toMatchObject({ statusId: 'applied_to_compatibility', snapshotId: fixture.snapshotId });
+  expect(await readState(fixture)).toMatchObject({ active: false, restored: true, hold_state: 'active' });
+  expect(await readRollbackEvent(fixture.policyId)).toEqual([
+    { intent_id: intentId, metadata: expect.objectContaining({ snapshotId: fixture.snapshotId }) },
+  ]);
+});
+
+test('rolls back if restore returns a different snapshot ID', async () => {
+  const fixture = await seedSnapshot('unexpected-restored-snapshot');
+  const dbClient = { withTransaction: work => db.withTransaction(client => work({
+    async query(sql, params) {
+      const result = await client.query(sql, params);
+      if (sql.includes('UPDATE policy_intent_rollback_snapshots')) {
+        return { ...result, rows: [{ id: fixture.snapshotId + 1 }] };
+      }
+      return result;
+    },
+  })) };
+  const result = await applyPolicyNativeIntentReversion({ dbClient, ...fixture, action });
+  expect(result.statusId).toBe('failed_rolled_back');
+  expect(await readState(fixture)).toMatchObject({ active: true, restored: false, hold_state: null });
+  expect(await readRollbackEvent(fixture.policyId)).toEqual([]);
 });
