@@ -85,7 +85,7 @@ function normalizeMetadata(metadata = {}) {
 export function normalizeWebSearchProviderHealthEventRow(row) {
   if (!row) return null;
   return {
-    id: row.id == null ? null : Number(row.id),
+    id: normalizeDatabaseBigintId(row.id),
     providerKey: row.provider_key,
     eventType: row.event_type,
     healthStatus: row.health_status,

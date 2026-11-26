@@ -118,7 +118,7 @@ export function createWebSearchProviderSettingsHandlers({
       return sendData(res, configs.map((config) => webSearchProviderRegistry.enrichConfig(config)));
     }),
 
-    // History readers provide classificationId as a safe number, exact decimal string, or null.
+    // History readers return both record and classification IDs as safe numbers, exact decimal strings, or null.
     getRouteDiagnostics: asyncHandler(async (_req, res) => {
       const candidates = await webSearchProviderRouter.getRouteCandidates();
       const diagnostics = buildWebSearchProviderRouteDiagnostics(candidates, {

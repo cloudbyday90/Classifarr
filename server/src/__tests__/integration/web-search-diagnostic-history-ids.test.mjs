@@ -114,3 +114,48 @@ test.each([
   expect(route).toMatchObject({ classificationId: expected });
   expect(health).toMatchObject({ classificationId: expected });
 });
+
+async function setDiagnosticSequences({ routeId, healthId, isCalled }) {
+  await db.query(`
+    SELECT setval(pg_get_serial_sequence('web_search_provider_route_decisions', 'id'), $1, $3),
+           setval(pg_get_serial_sequence('web_search_provider_health_events', 'id'), $2, $3)
+  `, [routeId, healthId, isCalled]);
+}
+
+test('preserves both record IDs in insert results and administrator diagnostics', async () => {
+  const safe = await recordDiagnostics('own-id-safe', 42);
+  expect(typeof safe.route.id).toBe('number');
+  expect(typeof safe.health.id).toBe('number');
+
+  const lower = '9007199254740992';
+  const upper = '9007199254740993';
+  const maximum = '9223372036854775807';
+  let largeRecords;
+  try {
+    await setDiagnosticSequences({ routeId: lower, healthId: lower, isCalled: false });
+    const first = await recordDiagnostics('own-id-lower', 43);
+    const second = await recordDiagnostics('own-id-upper', 44);
+    await setDiagnosticSequences({ routeId: maximum, healthId: maximum, isCalled: false });
+    const last = await recordDiagnostics('own-id-maximum', 45);
+    largeRecords = [first, second, last];
+  } finally {
+    await setDiagnosticSequences({ routeId: safe.route.id, healthId: safe.health.id, isCalled: true });
+  }
+
+  const ids = [lower, upper, maximum];
+  expect(largeRecords.map(({ route }) => route.id)).toEqual(ids);
+  expect(largeRecords.map(({ health }) => health.id)).toEqual(ids);
+  expect(new Set(largeRecords.map(({ route }) => route.routeId)).size).toBe(3);
+
+  const { body } = await request(app).get(diagnosticsUrl)
+    .set('Authorization', `Bearer ${adminToken}`).expect(200);
+  const expected = [safe, ...largeRecords].reverse();
+  expect(body.recentDecisions.filter(({ correlationId }) => correlationId?.startsWith('own-id-')))
+    .toEqual(expected.map(({ route }) => expect.objectContaining({
+      id: route.id, routeId: route.routeId, classificationId: route.classificationId, correlationId: route.correlationId,
+    })));
+  expect(body.recentHealthEvents.filter(({ correlationId }) => correlationId?.startsWith('own-id-')))
+    .toEqual(expected.map(({ health }) => expect.objectContaining({
+      id: health.id, classificationId: health.classificationId, correlationId: health.correlationId,
+    })));
+});

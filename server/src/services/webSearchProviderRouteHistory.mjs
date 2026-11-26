@@ -99,7 +99,7 @@ export function serializeWebSearchRouteAttemptForHistory(attempt = {}) {
 export function normalizeWebSearchRouteDecisionRow(row) {
   if (!row) return null;
   return {
-    id: row.id == null ? null : Number(row.id),
+    id: normalizeDatabaseBigintId(row.id),
     routeId: row.route_id,
     purpose: row.purpose,
     operation: row.operation,

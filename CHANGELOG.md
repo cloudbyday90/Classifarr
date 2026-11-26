@@ -38,6 +38,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   bound to the selected History row for exact BIGINT IDs.
 - **pgvector recall audit** — Target exact BIGINT History IDs and reject
   malformed or conflicting selectors before querying embeddings.
+- **Web-search provider diagnostics** — Keep large health-event and route
+  decision IDs exact so distinct records retain their own row identity.
 
 ## [v0.49.5-beta] - 2026-11-24
 

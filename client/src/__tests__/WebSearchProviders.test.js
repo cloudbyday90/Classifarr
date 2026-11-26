@@ -451,6 +451,56 @@ describe('WebSearchProviders settings view', () => {
     expect(wrapper.text()).toContain('Outcome Weight')
   })
 
+  it('keeps adjacent large diagnostic records attached to their rows after refresh', async () => {
+    const ids = ['9007199254740992', '9007199254740993']
+    const providerKeys = ['brave', 'tavily']
+    const recentHealthEvents = ids.map((id, index) => ({
+      id, providerKey: providerKeys[index], eventType: 'success', createdAt: '2026-06-25T02:00:00.000Z',
+    }))
+    const recentDecisions = ids.map((id, index) => ({
+      id,
+      routeId: `80b08ac1-e63d-435c-9c60-14bfd9e2419${index}`,
+      finalProviderKey: providerKeys[index],
+      outcome: 'success',
+      createdAt: '2026-06-25T02:00:00.000Z',
+    }))
+    api.getWebSearchProviderRouteDiagnostics
+      .mockResolvedValueOnce({ candidates: [], recentHealthEvents, recentDecisions })
+      .mockResolvedValueOnce({
+        candidates: [],
+        recentHealthEvents: [...recentHealthEvents].reverse(),
+        recentDecisions: [...recentDecisions].reverse(),
+      })
+
+    const wrapper = mount(WebSearchProviders, { global: { stubs } })
+    const rowsFor = (title) => {
+      const heading = wrapper.findAll('h4').find((heading) => heading.text() === title)
+      return [...heading.element.nextElementSibling.children]
+    }
+    try {
+      await flushPromises()
+      const healthRows = rowsFor('Recent provider health events')
+      const routeRows = rowsFor('Recent route decisions')
+      expect(healthRows).toHaveLength(2)
+      expect(routeRows).toHaveLength(2)
+
+      const refresh = wrapper.findAll('button').find((button) => button.text() === 'Refresh diagnostics')
+      await refresh.trigger('click')
+      await flushPromises()
+
+      for (const [title, original] of [
+        ['Recent provider health events', healthRows], ['Recent route decisions', routeRows],
+      ]) {
+        const refreshed = rowsFor(title)
+        expect(refreshed).toHaveLength(2)
+        expect(refreshed[0]).toBe(original[1])
+        expect(refreshed[1]).toBe(original[0])
+      }
+    } finally {
+      wrapper.unmount()
+    }
+  })
+
   it('saves without echoing a blank masked API key back to the API', async () => {
     const wrapper = mount(WebSearchProviders, { global: { stubs } })
     await flushPromises()

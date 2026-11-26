@@ -122,6 +122,12 @@ It intentionally does **not** include:
 The endpoint uses the existing settings authentication and authorization path; it
 does not add a public diagnostics surface.
 
+The separate `recentDecisions` and `recentHealthEvents` lists carry the
+saved record ID and optional History reference. Both integer fields use
+numbers in the JavaScript safe range and exact decimal strings above it.
+Route decisions also carry their independent route UUID. See the
+[record ID design](web-search-provider-record-id-design.md).
+
 ## Implementation Outcome
 
 Added:
