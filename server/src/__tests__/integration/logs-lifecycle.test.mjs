@@ -7,8 +7,10 @@ jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDat
 const { default: db } = await import('../../config/database.mjs');
 const authService = await import('../../services/auth.mjs');
 const { authenticateToken, requireAdmin } = await import('../../middleware/auth.mjs');
-const { createLogger } = await import('../../utils/logger.mjs');
+const { createLogger, setLoggerDb } = await import('../../utils/logger.mjs');
 const { createLogsRouter } = await import('../../routes/logsRouteShared.mjs');
+const { ClassificationMetadataFailure, classificationMetadataFailureLogFields } =
+    await import('../../services/classificationMetadataFailure.mjs');
 const { persistRagLoopStageEvents } = await import('../../services/classificationPersistenceRagEvents.mjs');
 const { RAGLogger } = await import('../../utils/ragLogger.mjs');
 const ragErrorHandler = await import('../../utils/ragErrorHandler.mjs');
@@ -102,6 +104,50 @@ describe('Logs Lifecycle Integration Tests', () => {
             data.resolved]);
         return result.rows[0];
     }
+
+    it('preserves classifier task identity in persisted diagnostics and administrator reads', async () => {
+        const moduleName = 'classifier-metadata-fixture';
+        const upstreamBody = 'private-upstream-body';
+        const upstreamUrl = 'https://private.invalid/?api_key=fixture';
+        const fixtureLogger = createLogger(moduleName);
+        const records = [];
+
+        setLoggerDb(db);
+        try {
+            for (const taskId of [123, '9007199254740992', '9007199254740993', '9223372036854775807']) {
+                const error = new ClassificationMetadataFailure(Object.assign(new Error(upstreamUrl), {
+                    response: { status: 404, data: upstreamBody },
+                }), true, { tmdbId: 42, mediaType: 'movie' });
+                const fields = classificationMetadataFailureLogFields(error, taskId);
+                const errorId = await fixtureLogger.error('Classification error', fields, { error });
+                expect(errorId).toEqual(expect.any(String));
+                records.push({ errorId, taskId, failureReference: fields.failureReference });
+            }
+        } finally {
+            setLoggerDb(null);
+        }
+
+        const exported = await request(app).get(`/api/logs/export?module=${moduleName}`)
+            .set(authHeaders()).expect(200);
+        expect(exported.body).toHaveLength(records.length);
+        for (const { errorId, taskId, failureReference } of records) {
+            const expectedMetadata = {
+                taskId, failureReference, tmdbId: 42, mediaType: 'movie',
+                reasonCode: 'task_metadata_not_found', metadataFailure: { category: 'not_found', httpStatus: 404 },
+            };
+            const path = `/api/logs/error/${errorId}`;
+            const detail = await request(app).get(path).set(authHeaders()).expect(200);
+            const report = await request(app).get(`${path}/report`).set(authHeaders()).expect(200);
+            expect(detail.body.metadata).toMatchObject(expectedMetadata);
+            expect(exported.body.find(row => row.error_id === errorId)?.metadata).toMatchObject(expectedMetadata);
+            expect(report.body.report).toContain(`"taskId": ${JSON.stringify(taskId)}`);
+            expect(report.body.report).toContain('ClassificationMetadataFailure');
+            for (const output of [detail.text, report.body.report, exported.text]) {
+                expect(output).not.toContain(upstreamBody);
+                expect(output).not.toContain(upstreamUrl);
+            }
+        }
+    });
 
     it('lists and filters exact History IDs without narrowing or casting saved metadata', async () => {
         const lower = '9007199254740992';

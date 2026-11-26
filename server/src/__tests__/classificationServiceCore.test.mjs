@@ -8,7 +8,7 @@
 
 import { jest } from '@jest/globals';
 import { parseOverseerrPayload } from '../services/classificationMetadataServiceShared.mjs';
-import { ClassificationMetadataFailure, classificationMetadataFailureLogFields } from '../services/classificationMetadataFailure.mjs';
+import { ClassificationMetadataFailure } from '../services/classificationMetadataFailure.mjs';
 import { projectLiveInventoryQueryMetadata } from '../services/liveInventoryLearnedProfile.mjs';
 import { buildRetryPayload } from '../utils/classificationRetryPayloads.mjs';
 import { currentPolicyReviewFixture } from './fixtures/currentPolicyReviewFixture.mjs';
@@ -259,14 +259,20 @@ describe('organization metadata arrival and retry parity', () => {
 
   test('classification report keeps the actual lookup context and safe boundary stack', async () => {
     const service = createService();
+    service.classificationProgressStageService.updateStage = jest.fn();
     const error = new ClassificationMetadataFailure({ response: { status: 404, data: 'private' } }, true,
       { tmdbId: 42, mediaType: 'movie', token: 'private' });
     service.classificationMetadataService.parseOverseerrPayload = parseOverseerrPayload;
     service.classificationMetadataService.enrichWithTMDB = jest.fn().mockRejectedValue(error);
-    await expect(service.classifyQueueTask({ id: 99, claim_token: 'private' }, { media_type: 'movie', tmdb_id: 42 })).rejects.toBe(error);
-    expect(service.logger.error).toHaveBeenCalledWith('Classification error', {
-      error: 'Classification metadata lookup failed', ...classificationMetadataFailureLogFields(error, 99),
-    }, { error });
+    await expect(service.classifyQueueTask({ id: '9007199254740993', claim_token: 'private' }, {
+      media_type: 'movie', tmdb_id: 42, taskId: '9007199254740992',
+    })).rejects.toBe(error);
+    expect(service.logger.error).toHaveBeenCalledWith('Classification error', expect.objectContaining({
+      error: 'Classification metadata lookup failed', taskId: '9007199254740993', tmdbId: 42,
+      mediaType: 'movie', provider: 'tmdb', stage: 'metadata_fetch', operation: 'details',
+      reasonCode: 'task_metadata_not_found', metadataFailure: error.observation,
+      failureReference: expect.stringMatching(/^[a-f0-9-]{36}$/),
+    }), { error });
     expect(JSON.stringify(service.logger.error.mock.calls)).not.toContain('private');
     expect(error.stack).toContain('ClassificationMetadataFailure');
     expect(error.stack).not.toContain('persistToDb');

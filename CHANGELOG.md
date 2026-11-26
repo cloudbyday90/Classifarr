@@ -19,6 +19,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   queue task IDs, and polling requires evidence tied to the submitted task.
 - **Queue identity repair** — Metadata checks, repair commands, and selected
   backfill preserve exact BIGINT task IDs and readiness cursors.
+- **Classification diagnostics** — Metadata-failure details, bug reports, and
+  exports retain exact queue task IDs above JavaScript's safe-integer limit.
 
 ## [v0.49.5-beta] - 2026-11-24
 

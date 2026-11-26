@@ -2,6 +2,7 @@
 import { tmdbObservationFailure } from './tmdbObservationFailure.mjs';
 import { randomUUID } from 'node:crypto';
 import { canonicalMediaType, positiveDatabaseInteger } from './mediaIdentityValues.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const contexts = new WeakMap();
 
@@ -24,8 +25,12 @@ export function classificationMetadataFailureReason(error) {
 }
 
 export function classificationMetadataFailureLogFields(error, taskId = null) {
-  return error instanceof ClassificationMetadataFailure
-    ? { ...contexts.get(error), reasonCode: error.reasonCode, metadataFailure: error.observation,
-      ...(['number', 'string'].includes(typeof taskId) && /^[1-9][0-9]{0,15}$/u.test(String(taskId)) &&
-        Number.isSafeInteger(Number(taskId)) ? { taskId: Number(taskId) } : {}) } : {};
+  if (!(error instanceof ClassificationMetadataFailure)) return {};
+  const normalizedTaskId = normalizeDatabaseBigintId(taskId);
+  return {
+    ...contexts.get(error),
+    reasonCode: error.reasonCode,
+    metadataFailure: error.observation,
+    ...(normalizedTaskId === null ? {} : { taskId: normalizedTaskId }),
+  };
 }

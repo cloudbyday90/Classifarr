@@ -35,10 +35,21 @@ test('lookup identity and reference are bounded, repeatable and independent of t
   expect(fields).toMatchObject({ taskId: 123, tmdbId: 42, mediaType: 'tv', operation: 'enrichment',
     reasonCode: 'task_metadata_fetch_failed', metadataFailure: { category: 'cancelled' } });
   expect(classificationMetadataFailureLogFields(error).failureReference).toBe(fields.failureReference);
-  for (const taskId of [null, true, {}, -1, 1.5, 'secret', '9'.repeat(50)]) {
+  for (const taskId of [null, true, {}, -1, 1.5, '0123', 'secret', '9'.repeat(50),
+    Number.MAX_SAFE_INTEGER + 1, '9223372036854775808']) {
     expect(classificationMetadataFailureLogFields(error, taskId)).not.toHaveProperty('taskId');
   }
   expect(JSON.stringify(fields)).not.toContain('private');
   expect(classificationMetadataFailureLogFields(new ClassificationMetadataFailure({}, true,
     { tmdbId: 'secret', mediaType: 'secret' }))).toMatchObject({ tmdbId: null, mediaType: null });
+});
+
+test.each([
+  [Number.MAX_SAFE_INTEGER, 9007199254740991],
+  ['9007199254740991', 9007199254740991],
+  ['9007199254740992', '9007199254740992'],
+  ['9007199254740993', '9007199254740993'],
+  ['9223372036854775807', '9223372036854775807'],
+])('projects exact task identity for %s', (input, expected) => {
+  expect(classificationMetadataFailureLogFields(new ClassificationMetadataFailure({}), input).taskId).toBe(expected);
 });
