@@ -15,6 +15,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   report preserve exact History IDs above the JavaScript safe-integer limit.
 - **Queue task actions** — Retry, dismiss, cancel, and manual classification
   target exact BIGINT task IDs and refuse invalid task selectors.
+- **Queued evaluation** — Decision witnesses and sweep reports preserve large
+  queue task IDs, and polling requires evidence tied to the submitted task.
 
 ## [v0.49.5-beta] - 2026-11-24
 

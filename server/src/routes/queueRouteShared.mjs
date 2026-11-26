@@ -14,7 +14,7 @@ import { ValidationError, NotFoundError, ConflictError } from '../utils/appError
 import { requireValidPositiveInt, requireValidLimit } from './routeHelpers.mjs';
 import { registerQueueDecisionWitnessRoute } from './queueRouteDecisionWitness.mjs';
 import { readLibraryEvaluationSummary } from '../services/libraryEvaluationSummary.mjs';
-import { requireQueueTaskActionId } from '../services/queueTaskActionId.mjs';
+import { requireQueueTaskId } from '../services/queueTaskId.mjs';
 
 const VALID_RETRY_ENRICHMENT_TYPES = new Set(['tavily', 'web_search', 'omdb']);
 const MAX_QUEUE_LIST_LIMIT = 100;
@@ -127,19 +127,19 @@ export function createQueueRouter({
   }
 
   router.post('/task/:id/retry', requireReadWrite, asyncHandler(async (req, res) => {
-    const taskId = requireQueueTaskActionId(req.params.id);
+    const taskId = requireQueueTaskId(req.params.id);
     const result = await queueService.retryTask(taskId);
     return sendMutationResult(res, result);
   }));
 
   router.post('/task/:id/dismiss', requireReadWrite, asyncHandler(async (req, res) => {
-    const taskId = requireQueueTaskActionId(req.params.id);
+    const taskId = requireQueueTaskId(req.params.id);
     const result = await queueService.dismissFailedTask(taskId);
     return sendMutationResult(res, result);
   }));
 
   router.post('/task/:id/cancel', requireReadWrite, asyncHandler(async (req, res) => {
-    const taskId = requireQueueTaskActionId(req.params.id);
+    const taskId = requireQueueTaskId(req.params.id);
     const result = await queueService.cancelTask(taskId);
     return sendMutationResult(res, result);
   }));
@@ -191,7 +191,7 @@ export function createQueueRouter({
   }));
 
   router.post('/tasks/:id/classify', requireReadWrite, asyncHandler(async (req, res) => {
-    const taskId = requireQueueTaskActionId(req.params.id);
+    const taskId = requireQueueTaskId(req.params.id);
     const { resolved_by = 'admin' } = req.body;
     const libraryId = requireValidPositiveInt(req.body.library_id, 'library_id', 'invalid_library_id');
 

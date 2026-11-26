@@ -11,7 +11,7 @@
 import { normalizeMetadataList } from '../utils/metadataNormalization.mjs';
 import { captureOrganizationMetadata } from '../utils/metadataOrganizations.mjs';
 import { parsePayload } from '../utils/queueHelpers.mjs';
-import { requireQueueTaskActionId } from './queueTaskActionId.mjs';
+import { requireQueueTaskId } from './queueTaskId.mjs';
 
 export class QueueMutationService {
     constructor(deps = {}) {
@@ -31,7 +31,7 @@ export class QueueMutationService {
     }
 
     async retryTask(rawTaskId) {
-        const taskId = requireQueueTaskActionId(rawTaskId);
+        const taskId = requireQueueTaskId(rawTaskId);
         return this._withCatch('retry task', { taskId }, async () => {
             const task = await this.getTaskById(taskId);
             if (!task) {
@@ -70,7 +70,7 @@ export class QueueMutationService {
     }
 
     async dismissFailedTask(rawTaskId) {
-        const taskId = requireQueueTaskActionId(rawTaskId);
+        const taskId = requireQueueTaskId(rawTaskId);
         return this._withCatch('dismiss task', { taskId }, async () => {
             const task = await this.getTaskById(taskId);
             if (!task) {
@@ -106,7 +106,7 @@ export class QueueMutationService {
     }
 
     async cancelTask(rawTaskId) {
-        const taskId = requireQueueTaskActionId(rawTaskId);
+        const taskId = requireQueueTaskId(rawTaskId);
         return this._withCatch('cancel task', { taskId }, async () => {
             const task = await this.getTaskById(taskId);
             if (!task) {

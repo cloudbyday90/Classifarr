@@ -10,12 +10,7 @@
 
 import * as database from '../config/database.mjs';
 import { validateClassificationQueueDecisionWitness } from './classificationQueueDecisionWitness.mjs';
-import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
-
-function asPositiveInteger(value) {
-  const numeric = typeof value === 'number' ? value : Number(value);
-  return Number.isSafeInteger(numeric) && numeric > 0 ? numeric : null;
-}
+import { canonicalDatabaseBigintId, normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 export class ClassificationQueueDecisionWitnessRepository {
   constructor({ db = database } = {}) {
@@ -46,7 +41,7 @@ export class ClassificationQueueDecisionWitnessRepository {
   }
 
   async findLatestByQueueTaskId(queueTaskId) {
-    const normalizedQueueTaskId = asPositiveInteger(queueTaskId);
+    const normalizedQueueTaskId = normalizeDatabaseBigintId(queueTaskId);
     if (normalizedQueueTaskId === null) {
       return null;
     }

@@ -58,7 +58,7 @@ export class ClassificationQueueDecisionWitnessReadService {
   }
 
   async read(queueTaskId) {
-    const normalizedQueueTaskId = asPositiveInteger(queueTaskId);
+    const normalizedQueueTaskId = normalizeDatabaseBigintId(queueTaskId);
     if (normalizedQueueTaskId === null) {
       return { available: false, reasonId: 'invalid_queue_task_id' };
     }
@@ -73,7 +73,8 @@ export class ClassificationQueueDecisionWitnessReadService {
     });
     const classificationId = normalizeDatabaseBigintId(row.classification_id);
     const history = buildHistoryProjection(row);
-    if (!witnessValidation.ok || classificationId === null || !history || history.id !== classificationId) {
+    if (!witnessValidation.ok || normalizeDatabaseBigintId(row.queue_task_id) !== normalizedQueueTaskId ||
+        row.fingerprint !== row.witness.fingerprint || classificationId === null || !history || history.id !== classificationId) {
       return { available: false, reasonId: 'queue_decision_witness_invalid' };
     }
 

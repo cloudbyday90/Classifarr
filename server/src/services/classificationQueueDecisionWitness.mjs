@@ -9,10 +9,12 @@
  */
 
 import { createHash } from 'node:crypto';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { stableStringify } from './policyEvidenceFingerprint.mjs';
 
 const CLASSIFICATION_QUEUE_DECISION_WITNESS_VERSION =
   'classifarr.classification_queue_decision_witness.v1';
+const LARGE_TASK_WITNESS_VERSION = 'classifarr.classification_queue_decision_witness.v2';
 const CLASSIFICATION_QUEUE_DECISION_WITNESS_ALGORITHM = 'sha256';
 const IDENTIFIER_PATTERN = /^[a-z][a-z0-9_]{0,63}$/;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
@@ -55,17 +57,15 @@ function buildLibraryProjection({ libraryId, libraryName }) {
   return { id, name };
 }
 
-function buildWitnessFingerprintProjection({ queueTaskId, outcome }) {
-  return {
-    version: CLASSIFICATION_QUEUE_DECISION_WITNESS_VERSION,
-    queueTaskId,
-    outcome,
-  };
+function versionForTaskId(queueTaskId) {
+  return typeof queueTaskId === 'string'
+    ? LARGE_TASK_WITNESS_VERSION
+    : CLASSIFICATION_QUEUE_DECISION_WITNESS_VERSION;
 }
 
-function hashWitnessProjection(projection) {
+function hashWitnessProjection({ version, queueTaskId, outcome }) {
   return createHash('sha256')
-    .update(stableStringify(projection), 'utf8')
+    .update(stableStringify({ version, queueTaskId, outcome }), 'utf8')
     .digest('hex');
 }
 
@@ -121,11 +121,11 @@ function validateClassificationQueueDecisionWitness(value, { queueTaskId = null 
     return { ok: false, issue: 'invalid_witness_shape' };
   }
 
-  const normalizedQueueTaskId = asPositiveInteger(value.queueTaskId);
-  if (value.version !== CLASSIFICATION_QUEUE_DECISION_WITNESS_VERSION ||
+  const normalizedQueueTaskId = normalizeDatabaseBigintId(value.queueTaskId);
+  if (normalizedQueueTaskId === null || value.queueTaskId !== normalizedQueueTaskId ||
+      value.version !== versionForTaskId(normalizedQueueTaskId) ||
       value.algorithm !== CLASSIFICATION_QUEUE_DECISION_WITNESS_ALGORITHM ||
-      normalizedQueueTaskId === null ||
-      (queueTaskId !== null && normalizedQueueTaskId !== asPositiveInteger(queueTaskId))) {
+      (queueTaskId !== null && normalizedQueueTaskId !== normalizeDatabaseBigintId(queueTaskId))) {
     return { ok: false, issue: 'invalid_witness_identity' };
   }
 
@@ -134,10 +134,7 @@ function validateClassificationQueueDecisionWitness(value, { queueTaskId = null 
     return outcomeValidation;
   }
 
-  const expectedFingerprint = hashWitnessProjection(buildWitnessFingerprintProjection({
-    queueTaskId: normalizedQueueTaskId,
-    outcome: value.outcome,
-  }));
+  const expectedFingerprint = hashWitnessProjection(value);
   if (typeof value.fingerprint !== 'string' || !SHA256_PATTERN.test(value.fingerprint) ||
       value.fingerprint !== expectedFingerprint) {
     return { ok: false, issue: 'invalid_witness_fingerprint' };
@@ -147,7 +144,7 @@ function validateClassificationQueueDecisionWitness(value, { queueTaskId = null 
 }
 
 function buildClassificationQueueDecisionWitness({ queueTaskId, result = {}, persistenceState = {} } = {}) {
-  const normalizedQueueTaskId = asPositiveInteger(queueTaskId);
+  const normalizedQueueTaskId = normalizeDatabaseBigintId(queueTaskId);
   if (normalizedQueueTaskId === null || !isPlainObject(result) || !isPlainObject(persistenceState)) {
     return null;
   }
@@ -167,12 +164,12 @@ function buildClassificationQueueDecisionWitness({ queueTaskId, result = {}, per
   };
 
   const candidate = {
-    version: CLASSIFICATION_QUEUE_DECISION_WITNESS_VERSION,
+    version: versionForTaskId(normalizedQueueTaskId),
     algorithm: CLASSIFICATION_QUEUE_DECISION_WITNESS_ALGORITHM,
     queueTaskId: normalizedQueueTaskId,
     outcome,
   };
-  candidate.fingerprint = hashWitnessProjection(buildWitnessFingerprintProjection(candidate));
+  candidate.fingerprint = hashWitnessProjection(candidate);
 
   return validateClassificationQueueDecisionWitness(candidate).ok ? candidate : null;
 }

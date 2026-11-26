@@ -14,7 +14,7 @@ import { parsePayload as sharedParsePayload } from '../utils/queueHelpers.mjs';
 import { saveManualClassification } from './queueManualClassificationRecord.mjs';
 import { captureManualRoutingIntent } from './manualRoutingIntentPersistence.mjs';
 import { normalizeManualRoutingOutcome, recordManualRoutingOutcome, MANUAL_ROUTING_MESSAGE } from './queueManualRoutingOutcome.mjs';
-import { requireQueueTaskActionId } from './queueTaskActionId.mjs';
+import { requireQueueTaskId } from './queueTaskId.mjs';
 
 export class QueueAdminService {
     constructor(deps = {}) {
@@ -25,7 +25,7 @@ export class QueueAdminService {
     }
 
     async manualClassifyTask(rawTaskId, libraryId, resolvedBy = 'admin') {
-        const taskId = requireQueueTaskActionId(rawTaskId);
+        const taskId = requireQueueTaskId(rawTaskId);
         const selection = await this.db.withTransaction(client => saveManualClassification(client, {
             taskId, libraryId, resolvedBy, parsePayload: value => this.parsePayload(value),
             extract: value => this.ragGraphExtractor.extract(value),

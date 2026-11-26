@@ -92,12 +92,14 @@ describe.each([
       await request(app).get('/api/queue/pending?limit=5').set(headers).expect(200);
       await request(app).get('/api/queue/failed').set(headers).expect(200);
       await request(app).get('/api/queue/tasks/19/decision-witness').set(headers).expect(200);
+      await request(app).get('/api/queue/tasks/9223372036854775807/decision-witness').set(headers).expect(200);
       await request(app).get('/api/media-sync/lookup/42?mediaType=tv').set(headers).expect(200);
-      expect(authService.verifyToken).toHaveBeenCalledTimes(4);
+      expect(authService.verifyToken).toHaveBeenCalledTimes(5);
       expect(authService.verifyToken).toHaveBeenCalledWith('synthetic-sweep-token');
       expect(queueService.getPendingTasks).toHaveBeenCalledWith(5);
       expect(queueService.getFailedTasks).toHaveBeenCalledWith(20);
       expect(decisionWitnessReadService.read).toHaveBeenCalledWith(19);
+      expect(decisionWitnessReadService.read).toHaveBeenCalledWith('9223372036854775807');
       expect(mediaSyncService.findExistingMedia).toHaveBeenCalledWith(42, 'tv');
     });
 

@@ -107,7 +107,7 @@ function summarizeQueueDecisionWitness(result) {
   }
 
   return {
-    queueTaskId: Number.isSafeInteger(result.queueTaskId) ? result.queueTaskId : null,
+    queueTaskId: normalizeDatabaseBigintId(result.queueTaskId),
     classificationId: normalizeDatabaseBigintId(result.classificationId),
     version: result.decisionWitness.version || null,
     algorithm: result.decisionWitness.algorithm || null,

@@ -2,7 +2,7 @@
 import { ValidationError } from '../utils/appError.mjs';
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
-export function requireQueueTaskActionId(value) {
+export function requireQueueTaskId(value) {
   const id = normalizeDatabaseBigintId(value);
   if (id === null) throw new ValidationError('Valid task id is required', { code: 'invalid_task_id' });
   return id;

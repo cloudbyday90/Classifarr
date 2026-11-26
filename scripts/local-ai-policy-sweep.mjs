@@ -27,6 +27,8 @@ import {
 import {
   createAuthenticatedLocalAiPolicySweepApi,
 } from './lib/localAiPolicySweepAuthentication.mjs';
+import { fetchQueueTaskSnapshot, waitForQueueDecisionWitness } from './lib/localAiPolicySweepQueue.mjs';
+import { normalizeDatabaseBigintId } from '../server/src/services/databaseIntegerValues.mjs';
 
 const DEFAULT_BASE_URL = 'http://localhost:3000';
 const DEFAULT_FIXTURES = path.resolve('scripts/fixtures/ai-policy-sweep.fixtures.json');
@@ -293,8 +295,8 @@ function validateQueuedSubmissionResponse(response, mode) {
     issues.push('Submission response is missing queued=true.');
   }
 
-  if (!Number.isInteger(response.taskId)) {
-    issues.push('Submission response is missing numeric taskId.');
+  if (normalizeDatabaseBigintId(response.taskId) === null) {
+    issues.push('Submission response is missing a valid queue task ID.');
   }
 
   if (!Number.isInteger(response.logId)) {
@@ -313,7 +315,7 @@ function summarizeSubmissionResponse(response, mode) {
     mode,
     success: response?.success === true,
     queued: response?.queued === true,
-    taskId: Number.isInteger(response?.taskId) ? response.taskId : null,
+    taskId: normalizeDatabaseBigintId(response?.taskId),
     logId: Number.isInteger(response?.logId) ? response.logId : null,
   };
 }
@@ -426,23 +428,6 @@ async function waitForNewHistoryRow(api, existingIds, timeoutMs, pollMs) {
   return null;
 }
 
-async function waitForQueueDecisionWitness(api, taskId, timeoutMs, pollMs) {
-  if (!Number.isSafeInteger(taskId) || taskId < 1) {
-    return null;
-  }
-
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    const result = await api.requestJson(`/api/queue/tasks/${taskId}/decision-witness`);
-    if (result?.available === true) {
-      return result;
-    }
-    await sleep(pollMs);
-  }
-
-  return null;
-}
-
 function recordHistoryObservation({ row, historyRow, report, args, existingHistoryIds = null }) {
   if (!historyRow) {
     return false;
@@ -490,45 +475,6 @@ function recordHistoryObservation({ row, historyRow, report, args, existingHisto
   }
 
   return true;
-}
-
-async function fetchQueueTaskSnapshot(api, taskId) {
-  if (!Number.isInteger(taskId)) {
-    return { status: null, source: null, error: null };
-  }
-
-  try {
-    const [pendingTasks, failedTasks] = await Promise.all([
-      api.requestJson('/api/queue/pending?limit=100'),
-      api.requestJson('/api/queue/failed?limit=100'),
-    ]);
-
-    const pendingMatch = Array.isArray(pendingTasks)
-      ? pendingTasks.find((task) => task?.id === taskId)
-      : null;
-    if (pendingMatch) {
-      return {
-        status: pendingMatch.status || 'pending',
-        source: 'task_queue',
-        error: null,
-      };
-    }
-
-    const failedMatch = Array.isArray(failedTasks)
-      ? failedTasks.find((task) => task?.id === taskId)
-      : null;
-    if (failedMatch) {
-      return {
-        status: failedMatch.status || 'failed',
-        source: 'task_queue',
-        error: failedMatch.error_message || null,
-      };
-    }
-
-    return { status: null, source: null, error: null };
-  } catch (error) {
-    return { status: null, source: 'task_queue', error: error.message };
-  }
 }
 
 async function fetchWebhookLogById(api, logId, maxPages = 4, limit = 50) {
@@ -874,12 +820,7 @@ async function runSweep() {
             row.validationIssues = [...submission.validationIssues];
 
             let lifecycleResult = null;
-            const submittedTaskId = Number.isInteger(submission?.submissionResponse?.taskId)
-              ? submission.submissionResponse.taskId
-              : null;
-            const submittedLogId = Number.isInteger(submission?.submissionResponse?.logId)
-              ? submission.submissionResponse.logId
-              : null;
+            const { taskId: submittedTaskId, logId: submittedLogId } = row.submissionResponse;
             const persistedPromise = args.ingestMode === 'direct'
               ? waitForNewHistoryRow(
                 api,
@@ -910,7 +851,7 @@ async function runSweep() {
             if (args.ingestMode === 'direct' && !persisted) {
               row.validationIssues.push('No new classification_history row found within timeout window.');
             } else if (args.ingestMode !== 'direct' && !persisted) {
-              row.validationIssues.push('No queue decision witness was available within timeout window.');
+              row.validationIssues.push('No valid decision witness for the submitted queue task was available within the timeout window.');
             } else if (args.ingestMode === 'direct') {
               recordHistoryObservation({
                 row,

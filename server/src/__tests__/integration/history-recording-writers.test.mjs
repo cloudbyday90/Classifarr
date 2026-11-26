@@ -1,5 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 import { jest, test, expect, beforeEach, afterEach } from '@jest/globals';
+import express from 'express';
+import request from 'supertest';
 import { createIntegrationDatabaseModuleMock, getPool } from './setup.mjs';
 import { buildQueueClassificationHistoryInsertQuery } from '../../services/queueClassificationHistoryQueries.mjs';
 import { EVIDENCE_COVERAGE_SQL } from '../../services/evidenceCoverageQuery.mjs';
@@ -17,6 +19,8 @@ jest.unstable_mockModule('../../services/libraryProfileService.mjs', () => ({ li
 const db = await import('../../config/database.mjs');
 const { QueueAdminService } = await import('../../services/queueAdminService.mjs');
 const { ClassificationPersistenceService } = await import('../../services/classificationPersistenceService.mjs');
+const { registerQueueDecisionWitnessRoute } = await import('../../routes/queueRouteDecisionWitness.mjs');
+const { ClassificationQueueDecisionWitnessReadService } = await import('../../services/classificationQueueDecisionWitnessReadService.mjs');
 const graph = { director_name: null, primary_studio_name: null, genre_names: [], cast_ids: [], cast_names: [] };
 let libraryId;
 const metadata = () => ({ title: 'PRIVATE recording writer', media_type: 'movie', tmdb_id: 603,
@@ -49,6 +53,41 @@ test.each([false, true])('classification persistence obtains a database instant,
         library: { id: libraryId, name: 'Recording writer' }, recorded_at: '1900-01-01T00:00:00Z',
     });
     await expectRecorded(id, earliest);
+});
+
+test('publishes the exact queued decision witness from classification persistence through HTTP', async () => {
+    const ids = [19, Number.MAX_SAFE_INTEGER, '9007199254740992', '9007199254740993', '9223372036854775807'];
+    const persistence = new ClassificationPersistenceService();
+    const app = express();
+    registerQueueDecisionWitnessRoute(app, { decisionWitnessReadService: new ClassificationQueueDecisionWitnessReadService() });
+    const historyByTaskId = new Map();
+
+    for (const id of ids) {
+        const { rows: [task] } = await db.query(`INSERT INTO task_queue (id,task_type,status,payload)
+            VALUES ($1,'classification','processing',$2) RETURNING id`, [id, { recording_writer_fixture: true }]);
+        const classificationId = await persistence.logClassification(metadata(), {
+            method: 'ai_analysis', confidence: 90, library: { id: libraryId, name: 'Recording writer' },
+        }, null, { queueTask: task });
+        historyByTaskId.set(id, classificationId);
+    }
+
+    for (const id of ids) {
+        const { body } = await request(app).get(`/tasks/${id}/decision-witness`).expect(200);
+        expect(body).toMatchObject({ available: true, queueTaskId: id, classificationId: historyByTaskId.get(id),
+            history: { id: historyByTaskId.get(id) }, decisionWitness: {
+                queueTaskId: id,
+                version: `classifarr.classification_queue_decision_witness.${typeof id === 'number' ? 'v1' : 'v2'}`,
+            } });
+    }
+
+    const adjacent = '9007199254740992';
+    const selected = '9007199254740993';
+    await db.query(`UPDATE classification_queue_decision_witnesses AS target
+        SET witness=other.witness, fingerprint=other.fingerprint
+        FROM classification_queue_decision_witnesses AS other
+        WHERE target.queue_task_id=$1 AND other.queue_task_id=$2`, [selected, adjacent]);
+    await request(app).get(`/tasks/${selected}/decision-witness`).expect(200,
+        { available: false, reasonId: 'queue_decision_witness_invalid' });
 });
 
 async function expectOriginalType(field) {

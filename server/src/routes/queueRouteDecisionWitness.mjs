@@ -10,12 +10,12 @@
 
 import { asyncHandler } from '../utils/asyncHandler.mjs';
 import { sendData } from '../utils/responseHelpers.mjs';
-import { requireValidPositiveInt } from './routeHelpers.mjs';
+import { requireQueueTaskId } from '../services/queueTaskId.mjs';
 
-/** The read service returns safe History IDs as numbers and larger IDs as decimal strings. */
+/** The read service returns safe task and History IDs as numbers and larger IDs as decimal strings. */
 export function registerQueueDecisionWitnessRoute(router, { decisionWitnessReadService }) {
   router.get('/tasks/:id/decision-witness', asyncHandler(async (req, res) => {
-    const taskId = requireValidPositiveInt(req.params.id, 'task id', 'invalid_task_id');
+    const taskId = requireQueueTaskId(req.params.id);
     const result = await decisionWitnessReadService.read(taskId);
     return sendData(res, result);
   }));

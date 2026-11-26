@@ -120,7 +120,8 @@ classification-history persistence <--- database binding --- witness record
 
 ### Witness contract
 
-The ESM contract owns a single versioned projection:
+The ESM contract uses the same bounded projection for both versions. A v1
+witness carries a positive safe numeric queue task ID:
 
 ```js
 {
@@ -143,6 +144,12 @@ The SHA-256 value covers the version, queue task ID, and entire bounded
 outcome. The `classification_id` is a database association made after the
 history row exists; it is returned by the read model but is not substituted
 into the pre-persistence source projection.
+
+Above 9,007,199,254,740,991, the witness uses
+`classifarr.classification_queue_decision_witness.v2` and the task ID is a
+canonical decimal string through the PostgreSQL BIGINT maximum. Each version
+requires its own ID type. Existing numeric v1 fingerprints retain their
+original format. See the [exact task ID design](queue-witness-task-id-design.md).
 
 The builder accepts only a positive queue task ID; identifier-like method and
 status values; finite confidence in `0..100`; a library with both a positive ID
@@ -175,7 +182,10 @@ logs, raw history metadata, policy data, or model output.
 The response fields `classificationId` and `history.id` identify the same
 History row. Each is a JSON number through 9,007,199,254,740,991 and a
 canonical decimal string above that value, up to the PostgreSQL BIGINT
-maximum. The queued evaluation report preserves that representation.
+maximum. The response envelope and nested witness both identify the requested
+queue task using the same number-or-string boundary. The reader checks the
+stored task ID and fingerprint against the witness. The queued evaluation
+report preserves both task and History ID representations.
 
 The exchanged local-sweep token moves from prefix-only authorization to exact
 method-and-route grants. It permits only the harness's required `GET`, `PUT`,
@@ -187,9 +197,11 @@ removes the broad `/api/queue` prefix from the temporary credential.
 
 - Direct execution continues to grade the bounded HTTP classification response
   against independently persisted history.
-- Queued execution polls the witness endpoint for its submitted `taskId` and
-  uses its bound `classificationId`/history projection. A valid witness is
-  graded against history with the same deterministic fixture evaluator.
+- Queued execution polls the witness endpoint for its submitted `taskId`.
+  It checks the envelope and validated witness against that task and checks
+  the two History IDs before recording or grading. Unbound responses can be
+  skipped within the existing poll budget. The same deterministic fixture
+  evaluator grades the resulting bounded decision and History projection.
 - Invalid or unavailable witness data produces explicit `not_evaluated` reason
   IDs and a failed sweep row for a versioned fixture. Queue lifecycle, no-route,
   and contamination checks remain active.

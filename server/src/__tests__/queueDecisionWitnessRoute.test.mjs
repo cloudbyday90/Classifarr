@@ -39,13 +39,15 @@ describe('queue decision witness route', () => {
     expect(response.body.history).toEqual(expect.objectContaining({ id: 44 }));
   });
 
-  test('rejects a non-positive queue task id before reaching the reader', async () => {
-    const decisionWitnessReadService = { read: jest.fn() };
+  test.each(['0', '019', '19suffix', '9223372036854775808'])(
+    'rejects invalid queue task ID %s before reaching the reader', async taskId => {
+      const decisionWitnessReadService = { read: jest.fn() };
 
-    await request(createApp(decisionWitnessReadService))
-      .get('/api/queue/tasks/0/decision-witness')
-      .expect(400);
+      await request(createApp(decisionWitnessReadService))
+        .get(`/api/queue/tasks/${taskId}/decision-witness`)
+        .expect(400, { error: 'Valid task id is required', code: 'invalid_task_id' });
 
-    expect(decisionWitnessReadService.read).not.toHaveBeenCalled();
-  });
+      expect(decisionWitnessReadService.read).not.toHaveBeenCalled();
+    },
+  );
 });
