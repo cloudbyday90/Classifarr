@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { canonicalDatabaseBigintId, normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   ANSWER_OUTCOME_IDS,
   QUESTION_FRAME_IDS,
@@ -87,7 +88,7 @@ function uniqueReasonCodes(reasonCodes = []) {
 function buildExactItemMemory({ classification = {}, destination = {} } = {}) {
   const sourceClassification = asObject(classification);
   const targetDestination = asObject(destination);
-  const classificationId = normalizePositiveInteger(sourceClassification.id);
+  const classificationId = normalizeDatabaseBigintId(sourceClassification.id);
   const tmdbId = normalizePositiveInteger(sourceClassification.tmdbId);
   const mediaType = normalizeMediaType(sourceClassification.mediaType);
   const libraryId = normalizePositiveInteger(targetDestination.libraryId);
@@ -298,7 +299,7 @@ function buildPolicyManualCorrectionLearningAudit(result = {}) {
     });
   }
 
-  const exactItemMemoryIsComplete = Number.isInteger(exactItemMemory.classificationId) &&
+  const exactItemMemoryIsComplete = canonicalDatabaseBigintId(exactItemMemory.classificationId) !== null &&
     Number.isInteger(exactItemMemory.tmdbId) &&
     SUPPORTED_MEDIA_TYPES.includes(exactItemMemory.mediaType) &&
     Number.isInteger(exactItemMemory.libraryId) &&

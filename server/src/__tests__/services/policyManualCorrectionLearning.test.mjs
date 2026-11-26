@@ -81,6 +81,42 @@ describe('policyManualCorrectionLearning', () => {
     );
   });
 
+  it.each([
+    [42, 42],
+    ['42', 42],
+    ['9007199254740992', '9007199254740992'],
+    ['9007199254740993', '9007199254740993'],
+    ['9223372036854775807', '9223372036854775807'],
+  ])('preserves the exact History ID for %p', (id, expected) => {
+    const result = buildPolicyManualCorrectionLearning({
+      ...validInput,
+      classification: { ...validInput.classification, id },
+    });
+
+    expect(result).toMatchObject({
+      statusId: POLICY_MANUAL_CORRECTION_LEARNING_STATUS_IDS.READY,
+      exactItemMemory: { classificationId: expected },
+      intake: { itemId: expected, finalOutcome: { itemId: expected } },
+      decision: {
+        finalOutcome: { itemId: expected },
+        learning: { candidate: { key: `manual_correction:${expected}:movie:10674` } },
+      },
+      audit: { ok: true },
+    });
+  });
+
+  it('does not admit exact-item memory for an unsafe numeric History ID', () => {
+    const result = buildPolicyManualCorrectionLearning({
+      ...validInput,
+      classification: { ...validInput.classification, id: Number.MAX_SAFE_INTEGER + 1 },
+    });
+
+    expect(result).toMatchObject({
+      statusId: POLICY_MANUAL_CORRECTION_LEARNING_STATUS_IDS.OUTCOME_ONLY,
+      exactItemMemory: { classificationId: null, eligible: false },
+    });
+  });
+
   it('records outcome only when the correction cannot identify one exact item', () => {
     const result = buildPolicyManualCorrectionLearning({
       ...validInput,

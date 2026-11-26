@@ -30,6 +30,7 @@ export function getHistory(params) {
 }
 
 export function submitCorrection(data) {
+  // Keep classification_id as a safe number or an exact decimal string through PostgreSQL BIGINT.
   return apiClient.post('/classification/corrections', data)
 }
 

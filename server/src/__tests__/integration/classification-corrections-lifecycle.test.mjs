@@ -25,6 +25,13 @@ const { reclassificationService } = await import('../../services/reclassificatio
 const { createLogger } = await import('../../utils/logger.mjs');
 const { createClassificationRouter } = await import('../../routes/classificationRouteShared.mjs');
 const { requireReadWrite } = await import('../../middleware/apiKeyAuth.mjs');
+const { buildPolicyManualCorrectionLearning } = await import('../../services/policyManualCorrectionLearning.mjs');
+const { buildPolicyManualCorrectionExecutionAuthorizationContext } =
+    await import('../../services/policyManualCorrectionExecutionAuthorization.mjs');
+const { POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS } =
+    await import('../../services/policyManualCorrectionExecutionLifecycle.mjs');
+const { PolicyManualCorrectionTransactionService } =
+    await import('../../services/policyManualCorrectionTransactionService.mjs');
 
 const express = (await import('express')).default;
 const logger = createLogger('corrections-integration-test');
@@ -160,6 +167,14 @@ describe('Classification Corrections Integration Tests', () => {
         return result.rows[0];
     }
 
+    async function seedLargeClassification(id, tmdbId) {
+        await db.query(`
+            INSERT INTO classification_history
+                (id, title, media_type, library_id, library_name, method, status, confidence, tmdb_id, metadata)
+            VALUES ($1, 'CorrTest Large History ID', 'movie', $2, $3, 'exact_match', 'completed', 85, $4, '{}')
+        `, [id, libraryA.id, libraryA.name, tmdbId]);
+    }
+
     function authHeaders(token = testToken) {
         return { Authorization: `Bearer ${token}` };
     }
@@ -215,6 +230,94 @@ describe('Classification Corrections Integration Tests', () => {
                     classification_id: cls.id,
                 }),
             ]);
+        });
+
+        it.each(['9007199254740993', '9223372036854775807'])(
+            'binds the correction, evidence, and receipt to exact History ID %s', async id => {
+                const neighborId = '9007199254740992';
+                await seedLargeClassification(neighborId, 40001);
+                await seedLargeClassification(id, 40002);
+
+                const res = await request(app)
+                    .post('/api/classification/corrections')
+                    .set(authHeaders())
+                    .send({ classification_id: id, corrected_library_id: libraryC.id });
+
+                expect(res.status).toBe(200);
+                expect(res.body).toMatchObject({
+                    classification_id: id,
+                    policy_learning: { status: 'ready', exact_item_memory_recorded: true },
+                });
+
+                const history = await db.query(`
+                    SELECT id, library_id, status, metadata #>> '{classification_details,outcome_link,source}' AS outcome
+                    FROM classification_history WHERE id = ANY($1::bigint[]) ORDER BY id
+                `, [[neighborId, id]]);
+                expect(history.rows).toEqual([
+                    { id: neighborId, library_id: libraryA.id, status: 'completed', outcome: null },
+                    { id, library_id: libraryC.id, status: 'corrected', outcome: 'api_correction' },
+                ]);
+
+                const receipts = await db.query(`
+                    SELECT classification_id FROM policy_authorized_outcome_source_event_receipts
+                    WHERE source_id = 'manual_classification_change' AND source_event_id = $1
+                `, [`classification_correction:${res.body.id}`]);
+                expect(receipts.rows).toEqual([{ classification_id: id }]);
+
+                const evidence = await db.query(`
+                    SELECT tmdb_id, library_id FROM classification_evidence
+                    WHERE scope = 'item_exact' AND tmdb_id IN (40001, 40002)
+                `);
+                expect(evidence.rows).toEqual([{ tmdb_id: 40002, library_id: libraryC.id }]);
+            },
+        );
+
+        it('rolls back the correction if learning changes the locked History identity', async () => {
+            const neighborId = '9007199254740992';
+            const id = '9007199254740993';
+            await seedLargeClassification(neighborId, 40001);
+            await seedLargeClassification(id, 40002);
+            let attemptedEventId;
+            const service = new PolicyManualCorrectionTransactionService({
+                db,
+                learningService: {
+                    build(input) {
+                        attemptedEventId = input.sourceEventId;
+                        return buildPolicyManualCorrectionLearning({
+                            ...input,
+                            classification: { ...input.classification, id: neighborId },
+                        });
+                    },
+                },
+            });
+
+            await expect(service.execute({
+                classificationId: id,
+                destinationLibraryId: libraryC.id,
+                actorId: 'corrections_test_user',
+                authorizationContext: buildPolicyManualCorrectionExecutionAuthorizationContext({
+                    actorId: 'corrections_test_user',
+                    authenticated: true,
+                }),
+            })).rejects.toMatchObject({
+                reasonId: POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.LEARNING_ADMISSION_INVALID,
+            });
+            expect(attemptedEventId).toMatch(/^classification_correction:[1-9][0-9]*$/);
+
+            const history = await db.query(`
+                SELECT id, library_id, status, metadata FROM classification_history
+                WHERE id = ANY($1::bigint[]) ORDER BY id
+            `, [[neighborId, id]]);
+            expect(history.rows).toEqual([neighborId, id].map(historyId => ({
+                id: historyId, library_id: libraryA.id, status: 'completed', metadata: {},
+            })));
+            expect((await db.query('SELECT id FROM classification_corrections')).rows).toEqual([]);
+            expect((await db.query('SELECT id FROM classification_evidence')).rows).toEqual([]);
+            const receipts = await db.query(`
+                SELECT classification_id FROM policy_authorized_outcome_source_event_receipts
+                WHERE source_id = 'manual_classification_change' AND source_event_id = $1
+            `, [attemptedEventId]);
+            expect(receipts.rows).toEqual([]);
         });
 
         it('rejects a corrected library with a different media type', async () => {
@@ -283,6 +386,22 @@ describe('Classification Corrections Integration Tests', () => {
                 .send({ corrected_library_id: libraryC.id });
 
             expect(res.status).toBe(400);
+        });
+
+        it('returns 400 for malformed History selectors without applying a correction', async () => {
+            const cls = await seedClassification('CorrTest Malformed Selector', libraryA.id);
+            for (const id of [[cls.id], `0${cls.id}`, `${cls.id}\n`, 42.5,
+                Number.MAX_SAFE_INTEGER + 1, '9223372036854775808']) {
+                const res = await request(app)
+                    .post('/api/classification/corrections')
+                    .set(authHeaders())
+                    .send({ classification_id: id, corrected_library_id: libraryC.id });
+
+                expect(res.status).toBe(400);
+            }
+            const history = await db.query('SELECT status FROM classification_history WHERE id = $1', [cls.id]);
+            expect(history.rows).toEqual([{ status: 'completed' }]);
+            expect((await db.query('SELECT id FROM classification_corrections')).rows).toEqual([]);
         });
 
         it('returns 400 when corrected_library_id is missing', async () => {

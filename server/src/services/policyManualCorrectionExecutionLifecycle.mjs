@@ -13,8 +13,10 @@ import {
   normalizeString,
 } from './policyAuthorizedOutcomePersistenceCommandValues.mjs';
 import { recordClassificationCorrection } from './classificationCorrectionWriter.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS = Object.freeze({
+  INVALID_CLASSIFICATION_ID: 'manual_correction_execution_invalid_classification_id',
   CLASSIFICATION_NOT_FOUND: 'manual_correction_execution_classification_not_found',
   DESTINATION_NOT_FOUND: 'manual_correction_execution_destination_not_found',
   DESTINATION_INACTIVE: 'manual_correction_execution_destination_inactive',
@@ -41,7 +43,7 @@ function normalizeClassification(row = {}) {
   const source = asObject(row);
 
   return {
-    id: normalizeIdentifier(source.id),
+    id: canonicalDatabaseBigintId(source.id),
     originalLibraryId: normalizeIdentifier(source.library_id ?? source.libraryId),
     tmdbId: normalizeIdentifier(source.tmdb_id ?? source.tmdbId),
     mediaType: normalizeMediaType(source.media_type ?? source.mediaType),
@@ -69,7 +71,10 @@ async function applyPolicyManualCorrectionLifecycle({
     throw new TypeError('Manual correction execution requires a transaction client.');
   }
 
-  const normalizedClassificationId = normalizeIdentifier(classificationId);
+  const normalizedClassificationId = canonicalDatabaseBigintId(classificationId);
+  if (normalizedClassificationId === null) {
+    return { ok: false, reasonId: POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.INVALID_CLASSIFICATION_ID };
+  }
   const normalizedDestinationLibraryId = normalizeIdentifier(destinationLibraryId);
   const normalizedActorId = normalizeString(actorId, 128);
 
@@ -81,7 +86,7 @@ async function applyPolicyManualCorrectionLifecycle({
     [normalizedClassificationId],
   ));
   const classification = normalizeClassification(classificationRow);
-  if (!classification.id) {
+  if (classification.id !== normalizedClassificationId) {
     return { ok: false, reasonId: POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.CLASSIFICATION_NOT_FOUND };
   }
 

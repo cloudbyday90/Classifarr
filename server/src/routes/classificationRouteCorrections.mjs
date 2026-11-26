@@ -44,6 +44,8 @@ function rethrowManualCorrectionExecutionError(error) {
   }
 
   switch (error.reasonId) {
+    case POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.INVALID_CLASSIFICATION_ID:
+      throw new ValidationError('classification_id must be a canonical positive PostgreSQL BIGINT ID');
     case POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.CLASSIFICATION_NOT_FOUND:
       throw new NotFoundError('Classification not found');
     case POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.DESTINATION_NOT_FOUND:

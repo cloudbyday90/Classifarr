@@ -65,6 +65,26 @@ describe('policyManualCorrectionExecutionLifecycle', () => {
     expect(client.query.mock.calls[3][0]).toContain('INSERT INTO classification_corrections');
   });
 
+  test.each([
+    null, true, [42], '042', '42\n', ' 42', '42e0', 42.5,
+    Number.MAX_SAFE_INTEGER + 1, '9223372036854775808',
+  ])('rejects an invalid History ID before any query (%p)', async classificationId => {
+    const client = { query: jest.fn().mockResolvedValue({ rows: [] }) };
+
+    const result = await applyPolicyManualCorrectionLifecycle({
+      client,
+      classificationId,
+      destinationLibraryId: 8,
+      actorId: 'operator-7',
+    });
+
+    expect(result).toEqual({
+      ok: false,
+      reasonId: POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.INVALID_CLASSIFICATION_ID,
+    });
+    expect(client.query).not.toHaveBeenCalled();
+  });
+
   test('rejects media-type drift before any lifecycle write', async () => {
     const client = {
       query: jest.fn()

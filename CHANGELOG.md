@@ -34,6 +34,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   History references in their event keys and outcome summaries.
 - **Discord pending-answer intake** — Derived event keys preserve exact
   History IDs and complete native fingerprints within the existing limit.
+- **Manual corrections** — Correction outcomes, evidence, and receipts stay
+  bound to the selected History row for exact BIGINT IDs.
 
 ## [v0.49.5-beta] - 2026-11-24
 

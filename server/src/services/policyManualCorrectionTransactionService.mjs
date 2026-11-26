@@ -9,6 +9,7 @@
  */
 
 import * as defaultDb from '../config/database.mjs';
+import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   PolicyAuthorizedOutcomeTransactionExecutor,
 } from './policyAuthorizedOutcomeTransactionExecutor.mjs';
@@ -84,7 +85,10 @@ class PolicyManualCorrectionTransactionService {
         sourceEventId: lifecycle.sourceEventId,
         actorId,
       });
-      if (learning.audit?.ok !== true) {
+      const lockedClassificationId = canonicalDatabaseBigintId(lifecycle.classification.id);
+      if (learning.audit?.ok !== true || lockedClassificationId === null ||
+          canonicalDatabaseBigintId(learning.intake?.itemId) !== lockedClassificationId ||
+          canonicalDatabaseBigintId(learning.intake?.finalOutcome?.itemId) !== lockedClassificationId) {
         throw new PolicyManualCorrectionTransactionError(
           POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.LEARNING_ADMISSION_INVALID,
         );

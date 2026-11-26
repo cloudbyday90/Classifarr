@@ -21,7 +21,11 @@ import {
 function learning() {
   return {
     audit: { ok: true },
-    intake: { sourceEventId: 'classification_correction:991' },
+    intake: {
+      sourceEventId: 'classification_correction:991',
+      itemId: 42,
+      finalOutcome: { itemId: 42 },
+    },
     decision: { learning: { decisionId: 'candidate' } },
     statusId: 'ready',
   };
@@ -79,6 +83,27 @@ describe('PolicyManualCorrectionTransactionService', () => {
       sourceEventId: 'classification_correction:991',
     }));
     expect(executor.execute).toHaveBeenCalledWith(expect.objectContaining({ client }));
+  });
+
+  test.each([
+    ['9007199254740992', '9007199254740993'],
+    ['9007199254740993', '9007199254740992'],
+    [Number.MAX_SAFE_INTEGER + 1, '9007199254740993'],
+    ['9007199254740993', undefined],
+  ])('refuses learning before execution if either intake ID differs (%p, %p)', async (itemId, outcomeId) => {
+    const { service, applyLifecycle, learningService, executor } = createService();
+    const locked = lifecycle();
+    locked.classification.id = '9007199254740993';
+    applyLifecycle.mockResolvedValue(locked);
+    const projection = learning();
+    projection.intake.itemId = itemId;
+    projection.intake.finalOutcome.itemId = outcomeId;
+    learningService.build.mockReturnValue(projection);
+
+    await expect(service.execute({ classificationId: locked.classification.id })).rejects.toMatchObject({
+      reasonId: POLICY_MANUAL_CORRECTION_EXECUTION_REASON_IDS.LEARNING_ADMISSION_INVALID,
+    });
+    expect(executor.execute).not.toHaveBeenCalled();
   });
 
   test('rejects and rolls back the correction lifecycle when the executor blocks', async () => {

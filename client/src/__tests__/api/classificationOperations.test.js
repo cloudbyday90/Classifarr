@@ -69,13 +69,15 @@ describe('classificationOperations', () => {
     expect(result).toEqual({ items: [], total: 0 })
   })
 
-  it('submitCorrection calls POST /classification/corrections with data', async () => {
-    const data = { classificationId: 'c1', correctedLabel: 'Movie' }
-    mockPost.mockResolvedValueOnce({ data: { ok: true } })
-    const result = await submitCorrection(data)
-    expect(mockPost).toHaveBeenCalledWith('/classification/corrections', data)
-    expect(result).toEqual({ data: { ok: true } })
-  })
+  it.each([42, '9007199254740993', '9223372036854775807'])(
+    'submitCorrection preserves History ID %p in the POST', async classificationId => {
+      const data = { classification_id: classificationId, corrected_library_id: 8 }
+      mockPost.mockResolvedValueOnce({ data: { ok: true } })
+      const result = await submitCorrection(data)
+      expect(mockPost).toHaveBeenCalledWith('/classification/corrections', data)
+      expect(result).toEqual({ data: { ok: true } })
+    },
+  )
 
   it('getStats calls getDataRequest with /classification/stats', async () => {
     const stats = { total: 100, correct: 85 }
