@@ -134,7 +134,9 @@ export async function insertNativeIntentReconciliationHold({
     `INSERT INTO policy_native_intent_reconciliation_holds (
        policy_id, source_event_id, hold_state, reason_id, held_at, updated_at
      )
-     VALUES ($1, $2, 'active', $3, $4, $4)
+     SELECT event.policy_id, event.id, 'active', $3, $4::timestamptz, $4::timestamptz
+     FROM policy_intent_migration_events event
+     WHERE event.policy_id = $1 AND event.id = $2 AND event.event_type = 'rollback_applied'
      ON CONFLICT (policy_id) DO UPDATE
      SET source_event_id = EXCLUDED.source_event_id,
          hold_state = 'active',

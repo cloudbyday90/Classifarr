@@ -93,6 +93,10 @@ Cons:
 An active hold references the `rollback_applied` migration event that created
 it. The reversion service writes both records within its existing transaction;
 if the hold cannot be persisted, the reversion rolls back.
+The hold writer binds the exact BIGINT event and checks that it is a
+`rollback_applied` event for the same policy. The reentry audit keeps the
+stored event's exact identity. See the
+[event identity design](native-intent-reversion-event-id-design.md).
 
 Candidate discovery excludes active holds. The apply gate also invokes a
 policy-local lifecycle guard only after it has locked current policy authority.

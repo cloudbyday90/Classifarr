@@ -40,6 +40,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   malformed or conflicting selectors before querying embeddings.
 - **Web-search provider diagnostics** — Keep large health-event and route
   decision IDs exact so distinct records retain their own row identity.
+- **Native-intent reversion** — Bind new reconciliation holds to the exact
+  rollback event for their policy and preserve large event IDs during reentry.
 
 ## [v0.49.5-beta] - 2026-11-24
 

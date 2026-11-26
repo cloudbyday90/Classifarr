@@ -222,7 +222,7 @@ async function applyPolicyNativeIntentReversion({
       await nativeIntentReconciliationLifecycleService.recordReversionHold({
         client,
         policyId: Number(policy.id),
-        sourceEventId: Number(eventId),
+        sourceEventId: eventId,
         heldAt: restoredAt,
       });
 

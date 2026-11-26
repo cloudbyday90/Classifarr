@@ -128,6 +128,17 @@ describe('NativeIntentReconciliationLifecycleService', () => {
     expect(lockHold).toHaveBeenCalledWith({ client: {}, policyId: 44 });
   });
 
+  test('keeps a policy held when its source ID cannot be represented', async () => {
+    const service = createService({
+      loadHolds: jest.fn().mockResolvedValue([{ policy_id: 44, source_event_id: -1 }]),
+    });
+
+    const result = await service.partitionCandidates({ candidates: [{ policyId: 44 }] });
+
+    expect(result.eligibleCandidates).toEqual([]);
+    expect(result.heldCandidates).toMatchObject([{ policyId: 44, hold: { sourceEventId: null } }]);
+  });
+
   test('records a rollback hold with the source migration event in the active transaction', async () => {
     const insertHold = jest.fn().mockResolvedValue(44);
     const service = createService({ insertHold });
@@ -205,5 +216,25 @@ describe('NativeIntentReconciliationLifecycleService', () => {
       releaseEventId: 912,
       releaseReasonId: 'approved_reentry',
     }));
+  });
+
+  test.each([
+    [Number.MAX_SAFE_INTEGER + 1, 912, 0],
+    [901, '9223372036854775808', 1],
+    [901, null, 1],
+  ])('never releases a hold with an invalid source or approval ID (%p, %p)', async (sourceId, approvalId, insertCalls) => {
+    const service = createService({
+      lockHold: jest.fn().mockResolvedValue({ source_event_id: sourceId }),
+      insertReentryEvent: jest.fn().mockResolvedValue(approvalId),
+    });
+
+    await expect(service.approvePolicyReentry({
+      dbClient: { withTransaction: work => work({}) },
+      policyId: 44,
+      action: { actorSourceId: 'manual_operator', actorId: 7, reasonCode: 'operator_reviewed' },
+    })).rejects.toThrow('Native intent reconciliation');
+
+    expect(service.insertReentryEvent).toHaveBeenCalledTimes(insertCalls);
+    expect(service.releaseHold).not.toHaveBeenCalled();
   });
 });

@@ -11,6 +11,7 @@
 import { randomUUID } from 'node:crypto';
 import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { loadPolicyActiveIntentIntegrityReport, POLICY_ACTIVE_INTENT_INTEGRITY_STATUS_IDS } from './policyActiveIntentIntegrity.mjs';
 import {
   NATIVE_INTENT_RECONCILIATION_LIFECYCLE_REASON_IDS,
@@ -61,7 +62,7 @@ function toSafeHeldCandidate(candidate, hold) {
   return {
     ...candidate,
     hold: {
-      sourceEventId: Number(hold.source_event_id),
+      sourceEventId: normalizeDatabaseBigintId(hold.source_event_id),
       reasonId: normalizeSafeId(
         hold.reason_id,
         NATIVE_INTENT_RECONCILIATION_LIFECYCLE_REASON_IDS.ROLLBACK_RECONCILIATION_HOLD,
@@ -170,7 +171,7 @@ export class NativeIntentReconciliationLifecycleService {
 
   async recordReversionHold({ client, policyId, sourceEventId, heldAt = this.now() } = {}) {
     const normalizedPolicyId = normalizePositiveInteger(policyId);
-    const normalizedSourceEventId = normalizePositiveInteger(sourceEventId);
+    const normalizedSourceEventId = normalizeDatabaseBigintId(sourceEventId);
     const normalizedHeldAt = normalizeTimestamp(heldAt);
     if (!normalizedPolicyId || !normalizedSourceEventId || !normalizedHeldAt) {
       throw new TypeError('Native intent reversion hold requires policy, event, and timestamp identifiers.');
@@ -322,14 +323,22 @@ export class NativeIntentReconciliationLifecycleService {
         return { approved: false, reasonId: 'reentry_hold_not_active', rawPayloadExposed: false };
       }
 
-      const eventId = await this.insertReentryEvent({
+      const heldEventId = normalizeDatabaseBigintId(hold.source_event_id);
+      if (heldEventId === null) {
+        throw new Error('Native intent reconciliation hold has an invalid source event identifier.');
+      }
+
+      const eventId = normalizeDatabaseBigintId(await this.insertReentryEvent({
         client,
         policyId: normalizedPolicyId,
         actorType: actionValidation.normalizedAction.actorType,
         actorId: actionValidation.normalizedAction.actorId,
         reasonCode: actionValidation.normalizedAction.reasonCode,
-        heldEventId: Number(hold.source_event_id),
-      });
+        heldEventId,
+      }));
+      if (eventId === null) {
+        throw new Error('Native intent reconciliation re-entry could not be persisted.');
+      }
       const releasedPolicyId = await this.releaseHold({
         client,
         policyId: normalizedPolicyId,
@@ -337,7 +346,7 @@ export class NativeIntentReconciliationLifecycleService {
         releaseReasonId: NATIVE_INTENT_RECONCILIATION_LIFECYCLE_REASON_IDS.APPROVED_REENTRY,
         releasedAt,
       });
-      if (!eventId || !releasedPolicyId) {
+      if (!releasedPolicyId) {
         throw new Error('Native intent reconciliation re-entry could not be persisted.');
       }
 
