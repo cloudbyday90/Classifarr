@@ -23,6 +23,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   exports retain exact queue task IDs above JavaScript's safe-integer limit.
 - **Historic route-safety refresh** — Retry receipts bind exact BIGINT queue
   task IDs so valid retries can commit and reconcile at large IDs.
+- **Classification intake** — Lifecycle receipts retain exact BIGINT queue
+  task IDs for private reporting after queue cleanup.
 
 ## [v0.49.5-beta] - 2026-11-24
 

@@ -3,11 +3,10 @@ import { ClassificationIntakeReceiptRepository } from './classificationIntakeRec
 import { isClassificationIntakeReason } from './classificationIntakeComparison.mjs';
 import { normalizeQueueTaskFailureReasonId } from './queueTaskFailureReason.mjs';
 import { buildCorrectionDecisionContext, readCorrectionDecisionContext } from './classificationDestinationDecision.mjs';
-import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
+import { canonicalDatabaseBigintId, normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const TRANSITIONS = new Set(['queued', 'processing', 'retry_scheduled', 'completed', 'failed']);
 const RECEIPT_WARNING_INTERVAL_MS = 60_000;
-const positive = value => Number.isSafeInteger(value) && value > 0;
 
 export class ClassificationIntakeReceiptService {
   constructor({ db, logger, repository = new ClassificationIntakeReceiptRepository({ db }), now = Date.now } = {}) {
@@ -33,8 +32,9 @@ export class ClassificationIntakeReceiptService {
 
   async record({ taskId, transition = null, attempts = null, classificationId = null,
     comparison = null, failureReasonId = null, decisionContext = null } = {}) {
+    const normalizedTaskId = normalizeDatabaseBigintId(taskId);
     const classificationIdText = canonicalDatabaseBigintId(classificationId);
-    if (!positive(taskId) || (transition !== null && !TRANSITIONS.has(transition)) ||
+    if (normalizedTaskId === null || (transition !== null && !TRANSITIONS.has(transition)) ||
         (attempts !== null && (!Number.isInteger(attempts) || attempts < 0 || attempts > 10000)) ||
         (classificationId !== null && classificationIdText === null) ||
         (comparison !== null && (!comparison || classificationId === null ||
@@ -48,7 +48,7 @@ export class ClassificationIntakeReceiptService {
     const failureCode = failureReasonId === null ? null : normalizeQueueTaskFailureReasonId(failureReasonId);
     try {
       const persisted = await this.repository.upsert([
-        taskId, attempts, classificationIdText,
+        normalizedTaskId, attempts, classificationIdText,
         comparison?.statusId ?? null, comparison?.reasonId ?? null, failureCode, context,
       ]);
       if (!persisted) this.warn('task_absent');

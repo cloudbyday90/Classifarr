@@ -57,10 +57,35 @@ test('normalizes failure code and rejects malformed task, transition and attempt
   expect(repository.upsert).toHaveBeenCalledWith([
     8, 2, null, null, null, 'task_processing_failed', null,
   ]);
-  expect(await service.record({ taskId: '8', transition: 'queued' })).toBe(false);
+  expect(await service.record({ taskId: '08', transition: 'queued' })).toBe(false);
   expect(await service.record({ taskId: 8, transition: 'routed' })).toBe(false);
   expect(await service.record({ taskId: 8, attempts: -1 })).toBe(false);
   expect(repository.upsert).toHaveBeenCalledTimes(1);
+});
+
+test.each([
+  ['8', 8],
+  [Number.MAX_SAFE_INTEGER, 9007199254740991],
+  ['9007199254740992', '9007199254740992'],
+  ['9007199254740993', '9007199254740993'],
+  ['9223372036854775807', '9223372036854775807'],
+])('binds exact intake task identity %s', async (taskId, expected) => {
+  const repository = { upsert: jest.fn().mockResolvedValue(true) };
+  const service = new ClassificationIntakeReceiptService({ repository });
+  expect(await service.recordQueued(taskId)).toBe(true);
+  expect(repository.upsert).toHaveBeenCalledWith([expected, null, null, null, null, null, null]);
+});
+
+test('rejects noncanonical, unsafe and out-of-range task IDs before storage', async () => {
+  const repository = { upsert: jest.fn() };
+  const logger = { warn: jest.fn() };
+  const service = new ClassificationIntakeReceiptService({ repository, logger });
+  for (const taskId of [null, true, 0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, 8n,
+    ['8'], {}, '08', ' 8 ', '8\n', '+8', '8.0', '8e0', '9223372036854775808']) {
+    expect(await service.recordQueued(taskId)).toBe(false);
+  }
+  expect(repository.upsert).not.toHaveBeenCalled();
+  expect(logger.warn).not.toHaveBeenCalled();
 });
 
 test('receipt failures stay advisory and log only fixed, rate-limited codes', async () => {

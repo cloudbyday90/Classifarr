@@ -2,6 +2,7 @@
 import { jest } from '@jest/globals';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { runClassificationIntakeReceiptReport } from '../../scripts/runClassificationIntakeReceiptReport.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 const db = await import('../../config/database.mjs');
@@ -91,6 +92,70 @@ describe('Queue claim fencing against live stale workers', () => {
     expect(await queue.failTask(last.id, 'private', 0, 999, last.claim_token)).toBe(true);
     expect((await db.query('SELECT status,attempts,claim_token FROM task_queue WHERE id=$1', [last.id])).rows[0])
       .toEqual({ status: 'failed', attempts: 2, claim_token: null });
+  });
+
+  test.each([
+    [9007199254740991, '9007199254740992'],
+    ['9007199254740992', '9007199254740993'],
+    ['9223372036854775806', '9223372036854775807'],
+  ])('retains exact intake receipts for adjacent queue tasks %s and %s', async (firstId, secondId) => {
+    const queue = worker();
+    const { rows: [sequence] } = await db.query('SELECT last_value, is_called FROM task_queue_id_seq');
+    const read = async id => (await db.query(
+      'SELECT queue_task_id, status_id, attempt_count FROM classification_intake_receipts WHERE queue_task_id=$1',
+      [id],
+    )).rows[0];
+    const report = id => runClassificationIntakeReceiptReport({
+      argv: ['--task-id', String(id)],
+      load: async () => ({ withTransaction: db.withTransaction, close: async () => {} }),
+    });
+    try {
+      await db.query("SELECT setval('task_queue_id_seq', $1, false)", [firstId]);
+      expect(await queue.enqueue('classification', { title: 'Private first fixture' }, { priority: 2 })).toBe(firstId);
+      expect(await queue.enqueue('classification', { title: 'Private second fixture' }, { maxAttempts: 2 })).toBe(secondId);
+      for (const id of [firstId, secondId]) {
+        expect(await read(id)).toEqual({ queue_task_id: id, status_id: 'queued', attempt_count: 0 });
+      }
+
+      const first = await queue.dequeue();
+      expect(first.id).toBe(firstId);
+      expect(await read(firstId)).toMatchObject({ status_id: 'processing' });
+      expect(await queue.classificationIntakeReceiptService.recordClassification(first.id, 41,
+        { statusId: 'not_captured', reasonId: 'no_policy_result' })).toBe(true);
+      expect(await queue.completeTask(first.id, {}, first.claim_token)).toBe(true);
+      expect(await read(firstId)).toMatchObject({ status_id: 'completed' });
+
+      const second = await queue.dequeue();
+      expect(second.id).toBe(secondId);
+      expect(await queue.completeTask(second.id, {}, first.claim_token)).toBe(false);
+      expect(await read(secondId)).toMatchObject({ status_id: 'processing', attempt_count: 0 });
+      expect(await queue.classificationIntakeReceiptService.recordClassification(second.id, 42,
+        { statusId: 'not_captured', reasonId: 'no_policy_result' })).toBe(true);
+      expect(await queue.failTask(second.id, 'task_processing_failed', 0, 2, second.claim_token)).toBe(true);
+      expect(await read(secondId)).toMatchObject({ status_id: 'retry_scheduled', attempt_count: 1 });
+      await db.query('UPDATE task_queue SET next_retry_at=NOW() WHERE id=$1', [secondId]);
+      const last = await queue.dequeue();
+      expect(last.id).toBe(secondId);
+      expect(await queue.failTask(last.id, 'task_processing_failed', 1, 2, second.claim_token)).toBe(false);
+      expect(await read(secondId)).toMatchObject({ status_id: 'processing', attempt_count: 1 });
+      expect(await queue.failTask(last.id, 'task_processing_failed', 1, 2, last.claim_token)).toBe(true);
+
+      await db.query('DELETE FROM task_queue WHERE id=ANY($1::bigint[])', [[firstId, secondId]]);
+      expect(await queue.classificationIntakeReceiptService.recordQueued(secondId)).toBe(false);
+      const firstReport = await report(firstId);
+      const secondReport = await report(secondId);
+      const serialized = JSON.parse(JSON.stringify([firstReport, secondReport]));
+      expect(serialized).toMatchObject([
+        { task: { queue_task_id: firstId, classification_id: 41, status_id: 'completed', attempt_count: 0 } },
+        { task: { queue_task_id: secondId, classification_id: 42, status_id: 'failed', attempt_count: 2 } },
+      ]);
+      expect(JSON.stringify(serialized)).not.toContain('Private');
+      expect(await report(secondId)).toEqual(secondReport);
+    } finally {
+      await db.query('DELETE FROM task_queue WHERE id=ANY($1::bigint[])', [[firstId, secondId]]);
+      await db.query('DELETE FROM classification_intake_receipts WHERE queue_task_id=ANY($1::bigint[])', [[firstId, secondId]]);
+      await db.query("SELECT setval('task_queue_id_seq', $1, $2)", [sequence.last_value, sequence.is_called]);
+    }
   });
 
   test('shutdown releases only locally tracked current claims, never a successor or another instance', async () => {
