@@ -47,6 +47,9 @@ describe('policyPurposeLifecycleReceiptSources', () => {
     const changeSource = sql.slice(sql.indexOf('change_lifecycle_receipts AS'),
       sql.indexOf('library_rebuild_replacement_lifecycle_receipts AS'))
     expect(changeSource).toMatch(/receiptBindingDigest[\s\S]*ORDER BY[\s\S]*LIMIT \$1/)
+    const rebuildSource = sql.slice(sql.indexOf('library_rebuild_replacement_lifecycle_receipts AS'),
+      sql.indexOf('normal_lifecycle_receipts AS'))
+    expect(rebuildSource).toMatch(/capture_event\.metadata[\s\S]*ORDER BY[\s\S]*LIMIT \$1/)
   })
 
   test('rejects a caller-selected SQL scope', () => {

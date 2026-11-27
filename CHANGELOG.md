@@ -80,6 +80,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   duplicate findings and block repair candidates when identity evidence is incomplete.
 - **Policy-purpose lifecycle reports** — Require saved attempt proof before
   counting native changes with large intent or migration event IDs.
+- **Policy-purpose rebuild receipts** — Verify saved capture and replacement
+  evidence before counting a library rebuild with large linked IDs.
 
 ## [v0.49.5-beta] - 2026-11-24
 

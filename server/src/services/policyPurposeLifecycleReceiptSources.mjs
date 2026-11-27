@@ -9,6 +9,7 @@
  */
 
 import { NATIVE_INTENT_CHANGE_LIFECYCLE_PROOF_SQL } from './policyNativeIntentChangeReceiptBindingSql.mjs';
+import { LIBRARY_REBUILD_LIFECYCLE_PROOF_SQL } from './policyLibraryRebuildLifecycleProofSql.mjs';
 
 export const POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS = Object.freeze({
   INITIAL_INTENT_ESTABLISHMENT: 'initial_intent_establishment',
@@ -134,6 +135,7 @@ export function buildPolicyPurposeLifecycleReceiptSourceCtesSql({ scope } = {}) 
          AND verification_run.verifier_audit_issue_count = 0
          AND verification_run.coordinator_audit_ok = TRUE
          AND verification_run.coordinator_audit_issue_count = 0
+         AND ${LIBRARY_REBUILD_LIFECYCLE_PROOF_SQL}
        ${recentWindowSql(normalizedScope, 'execution.replacement_applied_at', 'replacement_event.id')}
      ),
      normal_lifecycle_receipts AS (
