@@ -97,7 +97,7 @@ function summarizeExecution(value = null) {
     gateId: normalizeDatabaseBigintId(execution.gateId),
     policyId: normalizePositiveInteger(execution.policyId),
     originalIntentId: normalizePositiveInteger(execution.originalIntentId),
-    replacementIntentId: normalizePositiveInteger(execution.replacementIntentId),
+    replacementIntentId: normalizeDatabaseBigintId(execution.replacementIntentId),
     replacementEventId: normalizeDatabaseBigintId(execution.replacementEventId),
     rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollbackSnapshotId),
     verificationRunId: normalizeDatabaseBigintId(execution.verificationRunId),
@@ -220,7 +220,7 @@ function validatePolicyLibraryRebuildCutoverResult(result = {}) {
   if (succeeded && (normalizeDatabaseBigintId(execution.gateId) === null ||
       !Number.isInteger(execution.policyId) ||
       !Number.isInteger(execution.originalIntentId) ||
-      !Number.isInteger(execution.replacementIntentId) ||
+      normalizeDatabaseBigintId(execution.replacementIntentId) === null ||
       normalizeDatabaseBigintId(execution.replacementEventId) === null ||
       normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
       normalizeDatabaseBigintId(execution.verificationRunId) === null ||

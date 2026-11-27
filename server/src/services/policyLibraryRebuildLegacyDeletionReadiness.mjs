@@ -106,7 +106,7 @@ function summarizeExecutionGate(value = {}) {
     originalIntentId: normalizePositiveInteger(gate.intent_id ?? gate.intentId),
     libraryId: normalizePositiveInteger(gate.library_id ?? gate.libraryId),
     stateId: normalizeString(gate.state),
-    replacementIntentId: normalizePositiveInteger(
+    replacementIntentId: normalizeDatabaseBigintId(
       gate.replacement_intent_id ?? gate.replacementIntentId,
     ),
     replacementEventId: normalizeDatabaseBigintId(
@@ -204,7 +204,10 @@ function summarizeReplacementEvent(value = {}) {
   return {
     replacementEventId: normalizeDatabaseBigintId(event.id),
     policyId: normalizePositiveInteger(event.policy_id ?? event.policyId),
-    replacementIntentId: normalizePositiveInteger(event.intent_id ?? event.intentId),
+    replacementIntentId: normalizeDatabaseBigintId(event.intent_id ?? event.intentId),
+    replacementIntentReference: normalizeEventReference(
+      event.replacement_intent_reference, event.replacement_intent_reference_json_type,
+    ),
     eventType: normalizeString(event.event_type ?? event.eventType),
     executionGateId: normalizeEventReference(
       event.execution_gate_id ?? event.executionGateId, event.execution_gate_id_json_type,
@@ -225,14 +228,11 @@ function summarizeReplacementEvent(value = {}) {
 }
 
 function summarizeAuthority(activeNativeIntents = []) {
-  const intents = asArray(activeNativeIntents).map(intent => asObject(intent));
-  const activeIntentIds = intents
-    .map(intent => normalizePositiveInteger(intent.id))
-    .filter(Boolean);
+  const intents = asArray(activeNativeIntents);
 
   return {
-    activeNativeIntentCount: activeIntentIds.length,
-    activeNativeIntentId: activeIntentIds.length === 1 ? activeIntentIds[0] : null,
+    activeNativeIntentCount: intents.length,
+    activeNativeIntentId: intents.length === 1 ? normalizeDatabaseBigintId(asObject(intents[0]).id) : null,
   };
 }
 
@@ -373,6 +373,8 @@ function buildPolicyLibraryRebuildLegacyDeletionReadiness({
   } else if (event.replacementEventId !== execution.replacementEventId ||
       event.policyId !== execution.policyId ||
       event.replacementIntentId !== execution.replacementIntentId ||
+      (typeof execution.replacementIntentId === 'string' &&
+        event.replacementIntentReference !== execution.replacementIntentId) ||
       event.eventType !== 'library_rebuild_replacement_applied' ||
       event.executionGateId !== execution.gateId ||
       event.rollbackSnapshotId !== execution.rollbackSnapshotId ||
@@ -529,6 +531,7 @@ function validatePolicyLibraryRebuildLegacyDeletionReadiness(readiness = {}) {
 
   if (ready && (normalizeDatabaseBigintId(result.cutover?.gateId) === null ||
       normalizeDatabaseBigintId(result.cutover?.replacementEventId) === null ||
+      normalizeDatabaseBigintId(result.cutover?.replacementIntentId) === null ||
       normalizeDatabaseBigintId(result.verification?.verificationRunId) === null ||
       normalizeDatabaseBigintId(result.rollback?.rollbackSnapshotId) === null ||
       result.rollback?.dispositionId !== POLICY_LIBRARY_REBUILD_LEGACY_DELETION_READINESS_DISPOSITION_IDS

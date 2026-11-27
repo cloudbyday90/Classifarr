@@ -122,6 +122,8 @@ async function lockReplacementEvent({ client, replacementEventId, policyId }) {
        policy_id,
        intent_id,
        event_type,
+       metadata ->> 'replacementIntentId' AS replacement_intent_reference,
+       jsonb_typeof(metadata -> 'replacementIntentId') AS replacement_intent_reference_json_type,
        metadata ->> 'executionGateId' AS execution_gate_id,
        jsonb_typeof(metadata -> 'executionGateId') AS execution_gate_id_json_type,
        metadata ->> 'rollbackSnapshotId' AS rollback_snapshot_id,

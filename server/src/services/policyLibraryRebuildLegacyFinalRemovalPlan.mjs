@@ -105,7 +105,7 @@ function summarizeReadiness(value = {}) {
     cutover: {
       gateId: normalizeDatabaseBigintId(cutover.gateId),
       originalIntentId: normalizePositiveInteger(cutover.originalIntentId),
-      replacementIntentId: normalizePositiveInteger(cutover.replacementIntentId),
+      replacementIntentId: normalizeDatabaseBigintId(cutover.replacementIntentId),
       replacementEventId: normalizeDatabaseBigintId(cutover.replacementEventId),
       transitionFingerprint: normalizeFingerprint(cutover.transitionFingerprint),
       proposalFingerprint: normalizeFingerprint(cutover.proposalFingerprint),
@@ -125,7 +125,7 @@ function summarizeReadiness(value = {}) {
       activeNativeIntentCount: Number.isInteger(authority.activeNativeIntentCount)
         ? authority.activeNativeIntentCount
         : null,
-      activeNativeIntentId: normalizePositiveInteger(authority.activeNativeIntentId),
+      activeNativeIntentId: normalizeDatabaseBigintId(authority.activeNativeIntentId),
     },
     removalInventory: {
       version: normalizeString(inventory.version),
@@ -336,7 +336,7 @@ function validatePolicyLibraryRebuildLegacyFinalRemovalPlan(plan = {}) {
 
   if (ready && (!result.policy?.policyId || !result.policy?.libraryId ||
       normalizeDatabaseBigintId(result.cutover?.gateId) === null || !result.cutover?.originalIntentId ||
-      !result.cutover?.replacementIntentId ||
+      normalizeDatabaseBigintId(result.cutover?.replacementIntentId) === null ||
       normalizeDatabaseBigintId(result.cutover?.replacementEventId) === null ||
       !SHA256_FINGERPRINT_PATTERN.test(result.cutover?.transitionFingerprint || '') ||
       !SHA256_FINGERPRINT_PATTERN.test(result.cutover?.proposalFingerprint || '') ||

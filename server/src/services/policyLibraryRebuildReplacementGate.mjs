@@ -8,6 +8,7 @@
 
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import { hasPolicyLibraryRebuildCaptureRunProof } from './policyLibraryRebuildCaptureRunProof.mjs';
+import { hasPolicyLibraryRebuildReplacementIntentProof } from './policyLibraryRebuildReplacementIntentProof.mjs';
 import {
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS,
   validatePolicyLibraryRebuildAcceptanceTransition,
@@ -157,7 +158,7 @@ function buildAppliedResult({
       gateId: normalizeDatabaseBigintId(execution.id),
       policyId: Number(execution.policy_id),
       originalIntentId: Number(execution.intent_id),
-      replacementIntentId: Number(execution.replacement_intent_id),
+      replacementIntentId: normalizeDatabaseBigintId(execution.replacement_intent_id),
       replacementEventId: normalizeDatabaseBigintId(execution.replacement_event_id),
       rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollback_snapshot_id),
       transitionFingerprint: execution.transition_fingerprint,
@@ -243,7 +244,7 @@ function validatePolicyLibraryRebuildReplacementGate(result = {}) {
     ].includes(result.statusId) &&
     (normalizeDatabaseBigintId(execution.gateId) === null ||
       !Number.isInteger(execution.originalIntentId) ||
-      !Number.isInteger(execution.replacementIntentId) ||
+      normalizeDatabaseBigintId(execution.replacementIntentId) === null ||
       normalizeDatabaseBigintId(execution.replacementEventId) === null ||
       normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
       !hasFingerprint(execution.transitionFingerprint) ||
@@ -421,12 +422,12 @@ async function applyPolicyLibraryRebuildReplacement({
       }
 
       if (execution.state === POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.REPLACEMENT_APPLIED) {
-        if (normalizeDatabaseBigintId(execution.replacement_event_id) === null) {
+        if (!(await hasPolicyLibraryRebuildReplacementIntentProof({ client, execution }))) {
           return buildBlockedResult({
             statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
             now: executionTime,
             riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.EXECUTION_GATE_BINDING_MISMATCH,
-            message: 'Completed replacement does not have a valid migration event reference.',
+            message: 'Completed replacement cannot prove its saved intent and migration event reference.',
           });
         }
         return buildAppliedResult({
@@ -542,8 +543,9 @@ async function applyPolicyLibraryRebuildReplacement({
         now: executionTime,
       });
       if (normalizeDatabaseBigintId(persisted?.id) !== executionId ||
-          normalizeDatabaseBigintId(persisted?.replacement_event_id) !== replacementEventId) {
-        throw new Error('Replacement did not persist the expected event on the locked execution gate.');
+          normalizeDatabaseBigintId(persisted?.replacement_event_id) !== replacementEventId ||
+          normalizeDatabaseBigintId(persisted?.replacement_intent_id) !== replacementIntent.intentId) {
+        throw new Error('Replacement did not persist the expected intent and event on the locked execution gate.');
       }
 
       return buildAppliedResult({

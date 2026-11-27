@@ -192,6 +192,7 @@ function verificationReceipt(gate, overrides = {}) {
 function createClient({
   gate,
   verificationRun = gate ? verificationReceipt(gate) : null,
+  intentInsertId = 202,
   eventInsertId = 303,
   failRules = false,
 } = {}) {
@@ -260,7 +261,11 @@ function createClient({
       }
 
       if (statement.includes('INSERT INTO policy_intents')) {
-        return { rows: [{ id: 202, intent_version: 2 }], rowCount: 1 };
+        return { rows: [{ id: intentInsertId, intent_version: 2 }], rowCount: 1 };
+      }
+
+      if (statement.includes('RETURNING id, replaced_by_intent_id')) {
+        return { rows: [{ id: 101, replaced_by_intent_id: intentInsertId }], rowCount: 1 };
       }
 
       if (failRules && statement.includes('INSERT INTO policy_intent_rules')) {
@@ -273,7 +278,7 @@ function createClient({
 
       if (statement.includes('UPDATE policy_library_rebuild_execution_gates') &&
           statement.includes('RETURNING id')) {
-        return { rows: [{ id: 801, replacement_event_id: 303 }], rowCount: 1 };
+        return { rows: [{ id: 801, replacement_event_id: 303, replacement_intent_id: intentInsertId }], rowCount: 1 };
       }
 
       return { rows: [], rowCount: 1 };
@@ -342,6 +347,7 @@ describe('policyLibraryRebuildReplacementGate', () => {
     );
     expect(eventCall[1][6]).not.toContain('admin:1');
     expect(JSON.parse(eventCall[1][6])).toEqual(expect.objectContaining({
+      replacementIntentId: 202,
       verificationRunId: 701,
       verificationRunFingerprint: 'b'.repeat(64),
       verificationRunStatusId: 'no_migration_differences',
@@ -443,6 +449,23 @@ describe('policyLibraryRebuildReplacementGate', () => {
     expect(client.query).not.toHaveBeenCalledWith(
       expect.stringContaining('replacement_event_id = $4'),
       expect.anything()
+    );
+  });
+
+  test('refuses an unsafe native intent acknowledgement before attaching dependent rows', async () => {
+    const { proposal, transition } = buildFixture();
+    const client = createClient({ gate: execution(transition), intentInsertId: 9007199254740992 });
+    const result = await applyPolicyLibraryRebuildReplacement({
+      dbClient: { withTransaction: work => work(client) },
+      proposal, transition, now: NOW,
+    });
+
+    expect(result.statusId).toBe(POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.FAILED_ROLLED_BACK);
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('SET replaced_by_intent_id'), expect.anything(),
+    );
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intent_rules'), expect.anything(),
     );
   });
 

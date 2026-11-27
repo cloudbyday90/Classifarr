@@ -63,6 +63,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   large pending verification link.
 - **Native policy loading** — Load rules, templates, validation, routing,
   and evidence for exact BIGINT intent IDs in the policy engine's bulk read.
+- **Library rebuild replacement intents** — Keep generated intent IDs
+  exact through dependent writes, replay, and removal readiness.
 
 ## [v0.49.5-beta] - 2026-11-24
 

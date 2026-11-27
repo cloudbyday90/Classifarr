@@ -156,6 +156,21 @@ describe('policyLibraryRebuildLegacyDeletionReadiness', () => {
     expect(readiness.readyForFinalRemovalAudit).toBe(false);
   });
 
+  test('counts an active row with an inexact ID against sole authority', () => {
+    const readiness = buildPolicyLibraryRebuildLegacyDeletionReadiness(evidence({
+      activeNativeIntents: [
+        { id: 202, policy_id: 44, library_id: 6 },
+        { id: 9007199254740992, policy_id: 44, library_id: 6 },
+      ],
+    }));
+
+    expect(readiness.readyForFinalRemovalAudit).toBe(false);
+    expect(readiness.runtimeAuthority).toMatchObject({ activeNativeIntentCount: 2, activeNativeIntentId: null });
+    expect(readiness.risks).toContainEqual({
+      riskId: POLICY_LIBRARY_REBUILD_LEGACY_DELETION_READINESS_RISK_IDS.RUNTIME_AUTHORITY_AMBIGUOUS,
+    });
+  });
+
   test('blocks conflicting receipt provenance and multiple active native authorities', () => {
     const readyEvidence = evidence();
     const readiness = buildPolicyLibraryRebuildLegacyDeletionReadiness({

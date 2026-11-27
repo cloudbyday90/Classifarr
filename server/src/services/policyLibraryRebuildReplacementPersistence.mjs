@@ -147,20 +147,30 @@ async function insertNativeIntentHeader({ client, policy, previousIntent, contra
     ]
   );
   const replacementIntent = getFirstRow(inserted);
-  if (!replacementIntent?.id) {
-    throw new Error('Replacement native intent insert did not return an identifier.');
+  const intentId = normalizeDatabaseBigintId(replacementIntent?.id);
+  if (intentId === null) {
+    throw new Error('Replacement native intent insert did not return a valid identifier.');
   }
 
-  await client.query(
+  const linked = await client.query(
     `UPDATE policy_intents
      SET replaced_by_intent_id = $1,
          updated_at = $2
-     WHERE id = $3`,
-    [replacementIntent.id, now.toISOString(), previousIntent.id]
+     WHERE id = $3
+       AND policy_id = $4
+       AND library_id = $5
+       AND active = FALSE
+     RETURNING id, replaced_by_intent_id`,
+    [intentId, now.toISOString(), previousIntent.id, policy.id, policy.library_id]
   );
+  const predecessor = getFirstRow(linked);
+  if (normalizeDatabaseBigintId(predecessor?.id) !== normalizeDatabaseBigintId(previousIntent.id) ||
+      normalizeDatabaseBigintId(predecessor?.replaced_by_intent_id) !== intentId) {
+    throw new Error('Replacement did not save the expected successor on the locked native intent.');
+  }
 
   return {
-    intentId: Number(replacementIntent.id),
+    intentId,
     intentVersion: Number(replacementIntent.intent_version),
   };
 }
@@ -305,6 +315,7 @@ async function insertReplacementMigrationEvent({
       'Accepted library rebuild replacement applied from persisted rollback and verification evidence.',
       JSON.stringify({
         executionGateId: normalizeDatabaseBigintId(execution.id),
+        replacementIntentId: replacementIntent.intentId,
         transitionFingerprint: execution.transition_fingerprint,
         proposalFingerprint: execution.proposal_fingerprint,
         rollbackPlanFingerprint: execution.rollback_plan_fingerprint,
@@ -333,7 +344,7 @@ async function markExecutionReplacementApplied({
          updated_at = $5
      WHERE id = $1
        AND state = $6
-     RETURNING id, replacement_event_id`,
+     RETURNING id, replacement_event_id, replacement_intent_id`,
     [
       executionId,
       POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.REPLACEMENT_APPLIED,
