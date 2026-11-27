@@ -327,19 +327,19 @@ async function fetchActiveNativeIntentsForPolicies(dbClient, policies = []) {
     dbClient.query(`
       SELECT *
       FROM policy_intent_rules
-      WHERE intent_id = ANY($1::integer[])
+      WHERE intent_id = ANY($1::bigint[])
       ORDER BY intent_id, collection, sort_order, id
     `, [intentIds]),
     dbClient.query(`
       SELECT *
       FROM policy_intent_template_applications
-      WHERE intent_id = ANY($1::integer[])
+      WHERE intent_id = ANY($1::bigint[])
       ORDER BY intent_id, id
     `, [intentIds]),
     dbClient.query(`
       SELECT DISTINCT ON (intent_id) *
       FROM policy_intent_validation_status
-      WHERE intent_id = ANY($1::integer[])
+      WHERE intent_id = ANY($1::bigint[])
       ORDER BY intent_id, validated_at DESC, id DESC
     `, [intentIds]),
     dbClient.query(`
@@ -348,7 +348,7 @@ async function fetchActiveNativeIntentsForPolicies(dbClient, policies = []) {
         arr_type,
         target_status
       FROM policy_intent_routing_targets
-      WHERE intent_id = ANY($1::integer[])
+      WHERE intent_id = ANY($1::bigint[])
       ORDER BY intent_id, id DESC
     `, [intentIds]),
     dbClient.query(`
@@ -361,7 +361,7 @@ async function fetchActiveNativeIntentsForPolicies(dbClient, policies = []) {
         expires_at,
         payload_redacted
       FROM policy_observed_evidence_provenance_snapshots
-      WHERE intent_id = ANY($1::integer[])
+      WHERE intent_id = ANY($1::bigint[])
       ORDER BY intent_id, id DESC
     `, [intentIds]),
   ]);

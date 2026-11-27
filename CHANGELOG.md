@@ -61,6 +61,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 - **Library rebuild verification runs** — Keep exact receipt IDs from claim
   through removal readiness and require capture evidence before using a
   large pending verification link.
+- **Native policy loading** — Load rules, templates, validation, routing,
+  and evidence for exact BIGINT intent IDs in the policy engine's bulk read.
 
 ## [v0.49.5-beta] - 2026-11-24
 
