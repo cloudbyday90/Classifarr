@@ -59,11 +59,13 @@ async function redactObservedEvidenceProvenanceSnapshot({ client, snapshotId, no
      WHERE id = $1
        AND payload_redacted = FALSE
        AND expires_at <= $3::timestamptz
-     RETURNING id`,
+     RETURNING id, intent_id, establishment_id,
+       snapshot_payload #> '{retention_marker,intent_id}' AS marker_intent_id,
+       snapshot_payload #> '{retention_marker,establishment_id}' AS marker_establishment_id`,
     [snapshotId, JSON.stringify(marker), now]
   );
 
-  return firstRow(result)?.id ?? null;
+  return firstRow(result);
 }
 
 export {

@@ -70,6 +70,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 - **Rollback snapshot retention** — Preserve exact BIGINT snapshot, intent,
   and source event IDs, and keep redacting expired payloads when capture
   provenance is unavailable.
+- **Observed-evidence retention** — Preserve exact BIGINT snapshot, intent,
+  and establishment IDs and verify the saved marker before redaction commits.
 
 ## [v0.49.5-beta] - 2026-11-24
 

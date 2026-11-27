@@ -7,6 +7,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_OBSERVED_EVIDENCE_PROVENANCE_VERSION,
 } from './policyObservedEvidenceProvenanceContract.mjs';
@@ -84,8 +85,8 @@ function buildRedactedObservedEvidenceProvenancePayload({ snapshot = {}, now = n
       provenance_version: POLICY_OBSERVED_EVIDENCE_PROVENANCE_VERSION,
       policy_id: normalizePositiveInteger(snapshot.policy_id),
       library_id: normalizePositiveInteger(snapshot.library_id),
-      intent_id: normalizePositiveInteger(snapshot.intent_id),
-      establishment_id: normalizePositiveInteger(snapshot.establishment_id),
+      intent_id: normalizeDatabaseBigintId(snapshot.intent_id),
+      establishment_id: normalizeDatabaseBigintId(snapshot.establishment_id),
       snapshot_version: normalizePositiveInteger(snapshot.snapshot_version),
       source_id: typeof snapshot.source_id === 'string' ? snapshot.source_id : null,
       capture_state: typeof snapshot.capture_state === 'string' ? snapshot.capture_state : null,
@@ -119,8 +120,8 @@ function buildObservedEvidenceProvenanceRetentionResult({
 } = {}) {
   const ids = [...new Set(
     (Array.isArray(redactedSnapshotIds) ? redactedSnapshotIds : [])
-      .map(value => normalizePositiveInteger(value))
-      .filter(Boolean)
+      .map(normalizeDatabaseBigintId)
+      .filter(id => id !== null)
   )];
   const knownStatus = Object.values(
     POLICY_OBSERVED_EVIDENCE_PROVENANCE_RETENTION_STATUS_IDS

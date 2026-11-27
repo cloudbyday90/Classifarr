@@ -8,6 +8,7 @@
 
 import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   DEFAULT_POLICY_OBSERVED_EVIDENCE_PROVENANCE_RETENTION_BATCH_SIZE,
   POLICY_OBSERVED_EVIDENCE_PROVENANCE_RETENTION_RISK_IDS,
@@ -75,25 +76,38 @@ export class PolicyObservedEvidenceProvenanceRetentionService {
         const redactedSnapshotIds = [];
 
         for (const snapshot of snapshots) {
+          const snapshotId = normalizeDatabaseBigintId(snapshot.id);
+          const intentId = normalizeDatabaseBigintId(snapshot.intent_id);
+          const establishmentId = normalizeDatabaseBigintId(snapshot.establishment_id);
+          if (snapshotId === null || intentId === null || establishmentId === null) {
+            const error = new Error('Expired observed evidence provenance identity could not be verified.');
+            error.riskId = POLICY_OBSERVED_EVIDENCE_PROVENANCE_RETENTION_RISK_IDS
+              .SNAPSHOT_REDACTION_NOT_APPLIED;
+            throw error;
+          }
           const marker = buildRedactedObservedEvidenceProvenancePayload({
             snapshot,
             now: evaluatedAt,
           });
-          const redactedSnapshotId = await redactObservedEvidenceProvenanceSnapshot({
+          const redactedSnapshot = await redactObservedEvidenceProvenanceSnapshot({
             client,
-            snapshotId: snapshot.id,
+            snapshotId,
             now: evaluatedAt.toISOString(),
             marker,
           });
 
-          if (!redactedSnapshotId) {
-            const error = new Error('Expired observed evidence provenance payload was not redacted.');
+          if (normalizeDatabaseBigintId(redactedSnapshot?.id) !== snapshotId ||
+              normalizeDatabaseBigintId(redactedSnapshot.intent_id) !== intentId ||
+              normalizeDatabaseBigintId(redactedSnapshot.establishment_id) !== establishmentId ||
+              redactedSnapshot.marker_intent_id !== intentId ||
+              redactedSnapshot.marker_establishment_id !== establishmentId) {
+            const error = new Error('Expired observed evidence provenance redaction did not match the locked snapshot.');
             error.riskId = POLICY_OBSERVED_EVIDENCE_PROVENANCE_RETENTION_RISK_IDS
               .SNAPSHOT_REDACTION_NOT_APPLIED;
             throw error;
           }
 
-          redactedSnapshotIds.push(redactedSnapshotId);
+          redactedSnapshotIds.push(snapshotId);
         }
 
         return buildObservedEvidenceProvenanceRetentionResult({

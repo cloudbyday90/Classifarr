@@ -8,6 +8,9 @@
 
 import { jest } from '@jest/globals';
 import {
+  buildObservedEvidenceProvenanceRetentionResult,
+} from '../../services/policyObservedEvidenceProvenanceRetentionContract.mjs';
+import {
   POLICY_OBSERVED_EVIDENCE_PROVENANCE_RETENTION_RISK_IDS,
   POLICY_OBSERVED_EVIDENCE_PROVENANCE_RETENTION_STATUS_IDS,
   PolicyObservedEvidenceProvenanceRetentionService,
@@ -55,7 +58,15 @@ function createClient({ lockAcquired = true, snapshots = [snapshot()], redactSna
         return { rows: snapshots };
       }
       if (statement.includes('UPDATE policy_observed_evidence_provenance_snapshots')) {
-        return { rows: redactSnapshot ? [{ id: params[0] }] : [] };
+        const { retention_marker: marker } = JSON.parse(params[1]);
+        const row = snapshots.find(candidate => String(candidate.id) === String(params[0]));
+        return { rows: redactSnapshot ? [{
+          id: params[0],
+          intent_id: row.intent_id,
+          establishment_id: row.establishment_id,
+          marker_intent_id: marker.intent_id,
+          marker_establishment_id: marker.establishment_id,
+        }] : [] };
       }
       return { rows: [] };
     }),
@@ -129,6 +140,29 @@ describe('PolicyObservedEvidenceProvenanceRetentionService', () => {
       POLICY_OBSERVED_EVIDENCE_PROVENANCE_RETENTION_STATUS_IDS.CLEANUP_LOCKED
     );
     expect(client.calls).toHaveLength(1);
+  });
+
+  test('keeps adjacent large result IDs distinct and deduplicates equivalent safe forms', () => {
+    expect(buildObservedEvidenceProvenanceRetentionResult({
+      statusId: 'completed',
+      redactedSnapshotIds: ['901', 901, '9007199254740992', '9007199254740993', 9007199254740992],
+    })).toMatchObject({
+      redactedSnapshotCount: 3,
+      redactedSnapshotIds: [901, '9007199254740992', '9007199254740993'],
+    });
+  });
+
+  test.each(['id', 'intent_id', 'establishment_id'])('refuses an inexact selected %s before redaction', async field => {
+    const client = createClient({ snapshots: [snapshot({ [field]: 9007199254740992 })] });
+    const service = new PolicyObservedEvidenceProvenanceRetentionService({
+      db: createDb(client), logger: createLogger(),
+    });
+    expect(await service.cleanup({ now: NOW })).toMatchObject({
+      statusId: 'failed_rolled_back',
+      redactedSnapshotIds: [],
+      reason: { reasonId: 'snapshot_redaction_not_applied' },
+    });
+    expect(client.calls.some(call => call.sql.includes('UPDATE policy_observed_evidence_provenance_snapshots'))).toBe(false);
   });
 
   test('rolls back the batch without exposing raw payload when redaction fails', async () => {
