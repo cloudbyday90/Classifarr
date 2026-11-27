@@ -45,7 +45,7 @@ function createHarness({ existingObservation = null, receipt = {
     readObservation: jest.fn().mockResolvedValue(existingObservation),
     deleteExpiredDecisionRecord: jest.fn().mockResolvedValue(0),
     findRecentReceipt: jest.fn().mockResolvedValue(receipt),
-    upsertObservation: jest.fn().mockResolvedValue(observationRow()),
+    upsertObservation: jest.fn().mockResolvedValue({ ...observationRow(), source_receipt_id: receipt?.id }),
   };
   const loadMetrics = jest.fn().mockResolvedValue([]);
   return {
@@ -95,6 +95,22 @@ describe('policy-change outcome observation service', () => {
     await expect(service.startOutcomeObservation({ actorId: 7 }))
       .rejects.toBeInstanceOf(PolicyCandidateCorrectionPolicyChangeOutcomeObservationReceiptRequiredError);
   });
+
+  test.each([9007199254740992, '09007199254740993', '9223372036854775808'])(
+    'refuses malformed or inexact receipt ID %s before any writes',
+    async id => {
+      const { persistence, loadMetrics, service } = createHarness({
+        receipt: { id, source_intent_version: 4, target_intent_version: 5 },
+      });
+      const input = { actorId: 7, now: '2026-08-01T12:00:00.000Z' };
+      expect(await service.getOutcomeObservation(input)).toMatchObject({ startAvailable: false });
+      await expect(service.startOutcomeObservation(input))
+        .rejects.toBeInstanceOf(PolicyCandidateCorrectionPolicyChangeOutcomeObservationReceiptRequiredError);
+      expect(persistence.deleteExpiredDecisionRecord).not.toHaveBeenCalled();
+      expect(persistence.upsertObservation).not.toHaveBeenCalled();
+      expect(loadMetrics).not.toHaveBeenCalled();
+    },
+  );
 
   test('uses the persisted fixed follow-up range for an available outcome', async () => {
     const { loadMetrics, service } = createHarness({ existingObservation: observationRow() });

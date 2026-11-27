@@ -4,6 +4,7 @@
  */
 
 import { randomBytes } from 'node:crypto';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   buildPolicyCandidateCorrectionPolicyChangeOutcomeObservationReadModel,
   buildPolicyCandidateCorrectionPolicyChangeOutcomeObservationWindows,
@@ -73,10 +74,10 @@ function recentReceiptStartAt(now) {
 }
 
 function normalizeReceipt(value) {
-  const receiptId = Number(value?.id);
+  const receiptId = normalizeDatabaseBigintId(value?.id);
   const sourceIntentVersion = Number(value?.source_intent_version ?? value?.sourceIntentVersion);
   const targetIntentVersion = Number(value?.target_intent_version ?? value?.targetIntentVersion);
-  if (!Number.isSafeInteger(receiptId) || receiptId <= 0 ||
+  if (receiptId === null ||
       !Number.isSafeInteger(sourceIntentVersion) || sourceIntentVersion <= 0 ||
       !Number.isSafeInteger(targetIntentVersion) || targetIntentVersion <= sourceIntentVersion) {
     return null;
@@ -237,7 +238,9 @@ export function createPolicyCandidateCorrectionPolicyChangeOutcomeObservationSer
         },
       });
       const observation = normalizePolicyCandidateCorrectionPolicyChangeOutcomeObservationRow(insertedObservation);
-      if (!observation) throw new Error('Policy-change outcome observation persistence returned an invalid row.');
+      if (!observation || normalizeDatabaseBigintId(insertedObservation.source_receipt_id) !== receipt.receiptId) {
+        throw new Error('Policy-change outcome observation persistence returned an invalid row.');
+      }
 
       return Object.freeze({
         ...buildPolicyCandidateCorrectionPolicyChangeOutcomeObservationReadModel({

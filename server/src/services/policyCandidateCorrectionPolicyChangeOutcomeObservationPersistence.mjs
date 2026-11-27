@@ -111,6 +111,7 @@ export async function upsertPolicyCandidateCorrectionPolicyChangeOutcomeObservat
      WHERE ${POLICY_CANDIDATE_CORRECTION_POLICY_CHANGE_OUTCOME_OBSERVATION_TABLE}.expires_at <= EXCLUDED.created_at
      RETURNING
        hypothesis_id,
+       source_receipt_id,
        source_intent_version,
        target_intent_version,
        baseline_window_start_at,
