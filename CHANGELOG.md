@@ -67,6 +67,9 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   exact through dependent writes, replay, and removal readiness.
 - **Library rebuild original intents** — Preserve exact intent IDs
   from acceptance through verification, capture, and removal readiness.
+- **Rollback snapshot retention** — Preserve exact BIGINT snapshot, intent,
+  and source event IDs, and keep redacting expired payloads when capture
+  provenance is unavailable.
 
 ## [v0.49.5-beta] - 2026-11-24
 

@@ -7,6 +7,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const POLICY_ROLLBACK_SNAPSHOT_RETENTION_VERSION =
   'policy.rollback_snapshot_retention.v1';
@@ -109,17 +110,19 @@ function buildPayloadDigest(payload) {
     .digest('hex')}`;
 }
 
-function buildSnapshotAuditMetadata(sourceEvent = {}) {
-  const eventMetadata = asObject(sourceEvent.metadata);
+function buildSnapshotAuditMetadata(sourceEvent) {
+  const eventId = normalizeDatabaseBigintId(sourceEvent?.id);
+  const event = eventId === null ? {} : sourceEvent;
+  const eventMetadata = asObject(event.metadata);
 
   return {
-    migration_event_id: normalizeNullableInteger(sourceEvent.id),
-    actor_type: normalizeNullableString(sourceEvent.actor_type),
-    actor_id: normalizeNullableInteger(sourceEvent.actor_id),
+    migration_event_id: eventId,
+    actor_type: normalizeNullableString(event.actor_type),
+    actor_id: normalizeNullableInteger(event.actor_id),
     actor_source_id: normalizeNullableString(
       eventMetadata.actorSourceId ?? eventMetadata.actor_source_id
     ),
-    reason_code: normalizeNullableString(sourceEvent.reason_code),
+    reason_code: normalizeNullableString(event.reason_code),
   };
 }
 
@@ -134,7 +137,7 @@ function buildRedactedRollbackSnapshotPayload({ snapshot = {}, sourceEvent = {},
       state: 'expired_payload_redacted',
       redacted_at: redactedAt,
       policy_id: normalizePositiveInteger(snapshot.policy_id),
-      intent_id: normalizePositiveInteger(snapshot.intent_id),
+      intent_id: normalizeDatabaseBigintId(snapshot.intent_id),
       snapshot_version: normalizePositiveInteger(snapshot.snapshot_version),
       created_at: toIsoTimestamp(snapshot.created_at),
       expires_at: toIsoTimestamp(snapshot.expires_at),
@@ -158,8 +161,8 @@ function buildPolicyRollbackSnapshotRetentionResult({
 } = {}) {
   const normalizedIds = [...new Set(
     (Array.isArray(redactedSnapshotIds) ? redactedSnapshotIds : [])
-      .map(value => normalizePositiveInteger(value))
-      .filter(Boolean)
+      .map(normalizeDatabaseBigintId)
+      .filter(id => id !== null)
   )];
   const normalizedStatusId = Object.values(POLICY_ROLLBACK_SNAPSHOT_RETENTION_STATUS_IDS)
     .includes(statusId)

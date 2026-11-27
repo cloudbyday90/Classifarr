@@ -8,6 +8,7 @@
 
 import * as defaultDb from '../config/database.mjs';
 import { createLogger } from '../utils/logger.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   DEFAULT_POLICY_ROLLBACK_SNAPSHOT_RETENTION_BATCH_SIZE,
   POLICY_ROLLBACK_SNAPSHOT_RETENTION_RISK_IDS,
@@ -76,7 +77,15 @@ export class PolicyRollbackSnapshotRetentionService {
         });
         const redactedSnapshotIds = [];
 
-        for (const snapshot of snapshots) {
+        for (const selectedSnapshot of snapshots) {
+          const snapshotId = normalizeDatabaseBigintId(selectedSnapshot.id);
+          const intentId = normalizeDatabaseBigintId(selectedSnapshot.intent_id);
+          if (snapshotId === null || intentId === null) {
+            const error = new Error('Expired rollback snapshot identity could not be verified.');
+            error.riskId = POLICY_ROLLBACK_SNAPSHOT_RETENTION_RISK_IDS.SNAPSHOT_REDACTION_NOT_APPLIED;
+            throw error;
+          }
+          const snapshot = { ...selectedSnapshot, id: snapshotId, intent_id: intentId };
           const sourceEvent = await findRollbackSnapshotAuditEvent({ client, snapshot });
           const marker = buildRedactedRollbackSnapshotPayload({
             snapshot,
@@ -85,29 +94,32 @@ export class PolicyRollbackSnapshotRetentionService {
           });
           const redactedSnapshotId = await redactRollbackSnapshotPayload({
             client,
-            snapshotId: snapshot.id,
+            snapshotId,
             now: evaluatedAt.toISOString(),
             marker,
           });
 
-          if (!redactedSnapshotId) {
+          if (normalizeDatabaseBigintId(redactedSnapshotId) !== snapshotId) {
             const error = new Error('Expired rollback snapshot payload was not redacted.');
             error.riskId = POLICY_ROLLBACK_SNAPSHOT_RETENTION_RISK_IDS.SNAPSHOT_REDACTION_NOT_APPLIED;
             throw error;
           }
 
-          const eventId = await insertRollbackSnapshotRetentionEvent({
+          const event = await insertRollbackSnapshotRetentionEvent({
             client,
             snapshot,
             marker,
           });
-          if (!eventId) {
+          if (normalizeDatabaseBigintId(event?.id) === null ||
+              normalizeDatabaseBigintId(event.intent_id) !== intentId ||
+              event.snapshot_id !== snapshotId ||
+              event.source_audit_event_id !== marker.retention_marker.source_audit.migration_event_id) {
             const error = new Error('Rollback snapshot retention audit event was not written.');
             error.riskId = POLICY_ROLLBACK_SNAPSHOT_RETENTION_RISK_IDS.AUDIT_EVENT_NOT_WRITTEN;
             throw error;
           }
 
-          redactedSnapshotIds.push(redactedSnapshotId);
+          redactedSnapshotIds.push(snapshotId);
         }
 
         return buildPolicyRollbackSnapshotRetentionResult({

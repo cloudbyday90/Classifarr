@@ -11,6 +11,7 @@ import { jest } from '@jest/globals';
 import {
   DEFAULT_POLICY_ROLLBACK_SNAPSHOT_RETENTION_BATCH_SIZE,
   POLICY_ROLLBACK_SNAPSHOT_RETENTION_STATUS_IDS,
+  buildPolicyRollbackSnapshotRetentionResult,
   buildRedactedRollbackSnapshotPayload,
   normalizeRetentionBatchSize,
 } from '../../services/policyRollbackSnapshotRetentionContract.mjs';
@@ -84,8 +85,14 @@ function createClient({
         };
       }
       if (statement.includes('INSERT INTO policy_intent_migration_events')) {
+        const metadata = JSON.parse(params[3]);
         return {
-          rows: writeEvent ? [{ id: 601 }] : [],
+          rows: writeEvent ? [{
+            id: 601,
+            intent_id: params[0],
+            snapshot_id: metadata.snapshotId,
+            source_audit_event_id: metadata.sourceAuditEventId,
+          }] : [],
           rowCount: writeEvent ? 1 : 0,
         };
       }
@@ -149,6 +156,29 @@ describe('policyRollbackSnapshotRetentionService', () => {
     expect(serialized).not.toContain('must-not-leak');
     expect(serialized).not.toContain('Animation');
     expect(serialized).not.toContain('Family');
+  });
+
+  test('omits actor and reason when a source event cannot prove an exact ID', () => {
+    for (const event of [null, sourceEvent({ id: 9007199254740992 })]) {
+      expect(buildRedactedRollbackSnapshotPayload({ snapshot: snapshot(), sourceEvent: event, now: NOW }))
+        .toMatchObject({ retention_marker: { source_audit: {
+          migration_event_id: null,
+          actor_type: null,
+          actor_id: null,
+          actor_source_id: null,
+          reason_code: null,
+        } } });
+    }
+  });
+
+  test('deduplicates equivalent safe IDs and keeps adjacent large IDs separate', () => {
+    expect(buildPolicyRollbackSnapshotRetentionResult({
+      statusId: 'completed',
+      redactedSnapshotIds: [901, '901', '9007199254740992', '9007199254740993', 9007199254740992],
+    })).toMatchObject({
+      redactedSnapshotCount: 3,
+      redactedSnapshotIds: [901, '9007199254740992', '9007199254740993'],
+    });
   });
 
   test('redacts an expired payload at the exact expiry boundary under one transaction lock', async () => {

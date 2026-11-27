@@ -57,16 +57,19 @@ async function findRollbackSnapshotAuditEvent({ client, snapshot }) {
        AND intent_id = $2
        AND event_type = 'rollback_snapshot_created'
        AND target_version = $3
-     ORDER BY
-       CASE WHEN metadata ->> 'snapshotId' = $4::text THEN 0 ELSE 1 END,
-       created_at DESC,
-       id DESC
+       AND metadata ->> 'snapshotId' = $4::text
+       AND (
+         jsonb_typeof(metadata -> 'snapshotId') = 'string'
+         OR ($5::boolean AND jsonb_typeof(metadata -> 'snapshotId') = 'number')
+       )
+     ORDER BY created_at DESC, id DESC
      LIMIT 1`,
     [
       snapshot.policy_id,
       snapshot.intent_id,
       snapshot.snapshot_version,
       snapshot.id,
+      typeof snapshot.id === 'number',
     ]
   );
 
@@ -119,7 +122,9 @@ async function insertRollbackSnapshotRetentionEvent({
        'Expired rollback snapshot payload redacted after its restore window closed.',
        $4::jsonb
      )
-     RETURNING id`,
+     RETURNING id, intent_id,
+       metadata -> 'snapshotId' AS snapshot_id,
+       metadata -> 'sourceAuditEventId' AS source_audit_event_id`,
     [
       snapshot.intent_id,
       snapshot.policy_id,
@@ -136,7 +141,7 @@ async function insertRollbackSnapshotRetentionEvent({
     ]
   );
 
-  return firstRow(result)?.id ?? null;
+  return firstRow(result);
 }
 
 export {
