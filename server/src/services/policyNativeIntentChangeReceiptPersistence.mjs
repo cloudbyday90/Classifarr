@@ -9,6 +9,7 @@
  */
 
 import {
+  buildPolicyNativeIntentChangeReceiptBindingDigest,
   normalizePolicyNativeIntentChangeReceiptRow,
   POLICY_NATIVE_INTENT_CHANGE_RECEIPT_TABLE,
 } from './policyNativeIntentChangeReceiptContract.mjs';
@@ -48,7 +49,40 @@ export async function lockPolicyNativeIntentChangeReceipt({ client, idempotencyK
     [idempotencyKey],
   );
 
-  return normalizePolicyNativeIntentChangeReceiptRow(firstRow(result));
+  const row = firstRow(result);
+  if (!row) return null;
+  const receipt = normalizePolicyNativeIntentChangeReceiptRow(row);
+  if (!receipt) throw new Error('Saved native intent change receipt is invalid.');
+  return receipt;
+}
+
+export async function hasPolicyNativeIntentChangeReceiptBinding({ client, receipt }) {
+  const result = await client.query(
+    `SELECT event.id
+     FROM policy_intent_migration_events event
+     JOIN policy_intents intent ON intent.id = event.intent_id
+     WHERE event.id = $1
+       AND intent.id = $2
+       AND event.policy_id = $3
+       AND intent.policy_id = $3
+       AND event.event_type = 'native_intent_change_applied'
+       AND event.actor_type = 'operator'
+       AND event.actor_id = $4
+       AND event.source_version = $5
+       AND event.target_version = $6
+       AND intent.intent_version = $6
+       AND event.metadata -> 'receiptBindingDigest' = to_jsonb($7::text)`,
+    [
+      receipt.migrationEventId,
+      receipt.targetIntentId,
+      receipt.policyId,
+      receipt.actorId,
+      receipt.sourceIntentVersion,
+      receipt.targetIntentVersion,
+      buildPolicyNativeIntentChangeReceiptBindingDigest(receipt),
+    ],
+  );
+  return firstRow(result) !== null;
 }
 
 export async function insertPolicyNativeIntentChangeReceipt({ client, receipt }) {

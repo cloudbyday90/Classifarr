@@ -9,6 +9,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 export const POLICY_NATIVE_INTENT_CHANGE_RECEIPT_TABLE =
   'policy_native_intent_change_receipts';
@@ -107,17 +108,17 @@ export function buildPolicyNativeIntentChangeCommandFingerprint({
 
 export function normalizePolicyNativeIntentChangeReceiptRow(value) {
   const row = asObject(value);
-  const id = normalizePositiveInteger(row.id);
+  const id = normalizeDatabaseBigintId(row.id);
   const policyId = normalizePositiveInteger(row.policy_id ?? row.policyId);
   const actorId = normalizePositiveInteger(row.actor_id ?? row.actorId);
   const sourceIntentVersion = normalizePositiveInteger(
     row.source_intent_version ?? row.sourceIntentVersion,
   );
-  const targetIntentId = normalizePositiveInteger(row.target_intent_id ?? row.targetIntentId);
+  const targetIntentId = normalizeDatabaseBigintId(row.target_intent_id ?? row.targetIntentId);
   const targetIntentVersion = normalizePositiveInteger(
     row.target_intent_version ?? row.targetIntentVersion,
   );
-  const migrationEventId = normalizePositiveInteger(row.migration_event_id ?? row.migrationEventId);
+  const migrationEventId = normalizeDatabaseBigintId(row.migration_event_id ?? row.migrationEventId);
   const receiptVersion = Number(row.receipt_version ?? row.receiptVersion);
   const idempotencyKey = normalizeString(row.idempotency_key ?? row.idempotencyKey, 128);
   const commandFingerprint = normalizeString(
@@ -155,6 +156,21 @@ export function normalizePolicyNativeIntentChangeReceiptRow(value) {
     appliedCommandIds,
     createdAt: row.created_at ?? row.createdAt ?? null,
   };
+}
+
+export function buildPolicyNativeIntentChangeReceiptBindingDigest({
+  idempotencyKey,
+  commandFingerprint,
+  targetIntentId,
+}) {
+  return createHash('sha256')
+    .update(stableJson({
+      domain: 'policy.native_intent_change_receipt_binding.v1',
+      idempotencyKey,
+      commandFingerprint,
+      targetIntentId,
+    }), 'utf8')
+    .digest('hex');
 }
 
 export function receiptMatchesNativeIntentChange({

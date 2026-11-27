@@ -6,8 +6,10 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS,
   POLICY_NATIVE_INTENT_CHANGE_ADMISSION_STATUS_IDS,
@@ -35,10 +37,12 @@ import {
 } from './policyNativeIntentChangeIdempotency.mjs';
 import {
   buildPolicyNativeIntentChangeCommandFingerprint,
+  buildPolicyNativeIntentChangeReceiptBindingDigest,
   buildPolicyNativeIntentChangeReceiptRecord,
   receiptMatchesNativeIntentChange,
 } from './policyNativeIntentChangeReceiptContract.mjs';
 import {
+  hasPolicyNativeIntentChangeReceiptBinding,
   insertPolicyNativeIntentChangeReceipt,
   lockPolicyNativeIntentChangeReceipt,
   tryLockNativeIntentChangeIdempotencyKey,
@@ -196,6 +200,11 @@ async function applyPolicyNativeIntentChange({
           actorId: admission.actorId,
           commandFingerprint,
         })) {
+          // Legacy unsafe links may already point at a coherent neighboring pair.
+          if ((typeof existingReceipt.targetIntentId === 'string' || typeof existingReceipt.migrationEventId === 'string') &&
+              !(await hasPolicyNativeIntentChangeReceiptBinding({ client, receipt: existingReceipt }))) {
+            throw new Error('Saved native intent change receipt cannot prove its original binding.');
+          }
           return buildReplayedResult({
             receipt: existingReceipt,
             policyId: normalizedPolicyId,
@@ -290,7 +299,8 @@ async function applyPolicyNativeIntentChange({
         createdAt: now,
       });
 
-      if (!newIntent?.id) {
+      const newIntentId = normalizeDatabaseBigintId(newIntent?.id);
+      if (newIntentId === null || newIntent.intent_version !== newVersion) {
         throw new Error('Failed to insert the new native intent version.');
       }
 
@@ -313,7 +323,7 @@ async function applyPolicyNativeIntentChange({
       await copyRulesFromPreviousIntent({
         client,
         oldIntentId: activeIntent.id,
-        newIntentId: newIntent.id,
+        newIntentId,
         excludeCollections: changedCollections,
       });
 
@@ -322,7 +332,7 @@ async function applyPolicyNativeIntentChange({
         if (collection) {
           await insertRulesForCollection({
             client,
-            intentId: newIntent.id,
+            intentId: newIntentId,
             collection,
             entries: command.values,
           });
@@ -334,7 +344,7 @@ async function applyPolicyNativeIntentChange({
           cmd => cmd.commandId === POLICY_NATIVE_INTENT_CHANGE_COMMAND_IDS.UPDATE_ROUTING_TARGET);
         await insertRoutingTargetForChange({
           client,
-          intentId: newIntent.id,
+          intentId: newIntentId,
           libraryId: policy.library_id,
           routingTarget: routingCommand?.values?.[0] ?? {},
         });
@@ -342,7 +352,7 @@ async function applyPolicyNativeIntentChange({
         await copyRoutingTargetFromPreviousIntent({
           client,
           oldIntentId: activeIntent.id,
-          newIntentId: newIntent.id,
+          newIntentId,
           libraryId: policy.library_id,
         });
       }
@@ -353,22 +363,30 @@ async function applyPolicyNativeIntentChange({
         const reviewBehavior = reviewCommand?.values?.[0] ?? activeIntent.review_behavior ?? {};
         await updateReviewBehavior({
           client,
-          intentId: newIntent.id,
+          intentId: newIntentId,
           reviewBehavior,
         });
       }
 
+      const receiptBinding = {
+        idempotencyKey: admission.idempotencyKey,
+        commandFingerprint,
+        targetIntentId: newIntentId,
+      };
       const eventId = await insertNativeIntentChangeEvent({
         client,
-        intentId: newIntent.id,
+        intentId: newIntentId,
         policyId: normalizedPolicyId,
         actorType: 'operator',
-        actorId,
+        actorId: admission.actorId,
         sourceVersion: lockedRevision,
         targetVersion: newVersion,
         reasonCode: 'native_intent_change',
         summary: `Applied ${appliedCommandIds.length} change command(s): ${appliedCommandIds.join(', ')}`,
-        metadata: { appliedCommandIds },
+        metadata: {
+          appliedCommandIds,
+          receiptBindingDigest: buildPolicyNativeIntentChangeReceiptBindingDigest(receiptBinding),
+        },
       });
 
       const receipt = await insertPolicyNativeIntentChangeReceipt({
@@ -376,18 +394,20 @@ async function applyPolicyNativeIntentChange({
         receipt: buildPolicyNativeIntentChangeReceiptRecord({
           policyId: normalizedPolicyId,
           actorId: admission.actorId,
-          idempotencyKey: admission.idempotencyKey,
-          commandFingerprint,
+          ...receiptBinding,
           sourceIntentVersion: lockedRevision,
-          targetIntentId: newIntent.id,
           targetIntentVersion: newVersion,
           migrationEventId: eventId,
           appliedCommandIds,
           createdAt: now,
         }),
       });
-      if (!receipt) {
-        throw new Error('Native intent change receipt did not return an identifier.');
+      if (!receipt || receipt.targetIntentId !== newIntentId || receipt.migrationEventId !== eventId ||
+          receipt.policyId !== normalizedPolicyId || receipt.actorId !== admission.actorId ||
+          receipt.sourceIntentVersion !== lockedRevision || receipt.targetIntentVersion !== newVersion ||
+          receipt.idempotencyKey !== admission.idempotencyKey || receipt.commandFingerprint !== commandFingerprint ||
+          receipt.appliedCommandIds.join(',') !== appliedCommandIds.join(',')) {
+        throw new Error('Native intent change receipt did not acknowledge the expected change.');
       }
 
       return buildPolicyNativeIntentChangeResult({
@@ -396,7 +416,7 @@ async function applyPolicyNativeIntentChange({
         actorId,
         expectedRevision,
         currentRevision: lockedRevision,
-        newIntentId: newIntent.id,
+        newIntentId,
         newIntentVersion: newVersion,
         appliedCommandIds,
         migrationEventId: eventId,

@@ -6,7 +6,10 @@
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
  * (at your option) any later version.
+
  */
+
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 function firstRow(result) {
   return Array.isArray(result?.rows) ? result.rows[0] || null : null;
@@ -125,7 +128,8 @@ async function insertNativeIntentChangeEvent({
        metadata
      )
        VALUES ($1, $2, 'native_intent_change_applied', $3, $4, $5, $6, $7, $8, $9::jsonb)
-     RETURNING id`,
+     RETURNING id, intent_id, policy_id, actor_type, actor_id, source_version, target_version,
+       metadata -> 'receiptBindingDigest' AS receipt_binding_digest`,
     [
       intentId,
       policyId,
@@ -139,7 +143,15 @@ async function insertNativeIntentChangeEvent({
     ],
   );
 
-  return firstRow(result)?.id ?? null;
+  const event = firstRow(result);
+  const eventId = normalizeDatabaseBigintId(event?.id);
+  if (eventId === null || normalizeDatabaseBigintId(event.intent_id) !== normalizeDatabaseBigintId(intentId) ||
+      event.policy_id !== policyId || event.actor_type !== actorType || event.actor_id !== actorId ||
+      event.source_version !== sourceVersion || event.target_version !== targetVersion ||
+      event.receipt_binding_digest !== (metadata?.receiptBindingDigest ?? null)) {
+    throw new Error('Native intent change event did not acknowledge the expected receipt binding.');
+  }
+  return eventId;
 }
 
 async function copyRulesFromPreviousIntent({

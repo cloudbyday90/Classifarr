@@ -74,6 +74,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   and establishment IDs and verify the saved marker before redaction commits.
 - **Policy-change outcome observation** — Accept exact BIGINT source receipts
   and verify the private receipt link before saving an observation.
+- **Native intent change receipts** — Preserve exact receipt, target intent,
+  and migration event IDs, and require stored evidence to replay large links.
 
 ## [v0.49.5-beta] - 2026-11-24
 

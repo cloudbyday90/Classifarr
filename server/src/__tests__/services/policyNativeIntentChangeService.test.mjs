@@ -101,11 +101,20 @@ function buildMockClient({
       }
 
       if (sql.includes('INSERT INTO policy_intent_migration_events')) {
-        return { rows: [{ id: 200 }] };
+        const [intent_id, policy_id, actor_type, actor_id, source_version, target_version, , , metadata] = params;
+        return { rows: [{
+          id: 200, intent_id, policy_id, actor_type, actor_id, source_version, target_version,
+          receipt_binding_digest: JSON.parse(metadata).receiptBindingDigest,
+        }] };
       }
 
       if (sql.includes('INSERT INTO policy_native_intent_change_receipts')) {
-        return { rows: [buildReceiptRow()] };
+        const [, policy_id, actor_id, idempotency_key, command_fingerprint, source_intent_version,
+          target_intent_id, target_intent_version, migration_event_id, applied_command_ids] = params;
+        return { rows: [buildReceiptRow({
+          policy_id, actor_id, idempotency_key, command_fingerprint, source_intent_version, target_intent_id,
+          target_intent_version, migration_event_id, applied_command_ids: JSON.parse(applied_command_ids),
+        })] };
       }
 
       return { rows: [] };
@@ -124,6 +133,17 @@ function buildMockDbClient(client) {
 }
 
 describe('applyPolicyNativeIntentChange', () => {
+  test('refuses a found malformed receipt before any native mutation', async () => {
+    const { client, queries } = buildMockClient({
+      policyRow: { id: 42, library_id: 7 },
+      intentRow: { id: 50, intent_version: 3 },
+      receiptRow: buildReceiptRow({ target_intent_id: 9007199254740992 }),
+    });
+    const result = await applyPolicyNativeIntentChange({ ...VALID_INPUT, dbClient: buildMockDbClient(client) });
+    expect(result.statusId).toBe(POLICY_NATIVE_INTENT_CHANGE_RESULT_STATUS_IDS.FAILED_ROLLED_BACK);
+    expect(queries.some(({ sql }) => /^\s*(?:INSERT|UPDATE|DELETE)\b/um.test(sql))).toBe(false);
+  });
+
   test('refuses every fresh unsupported purpose before DML, even before a later supported replacement', async () => {
     const { client, queries } = buildMockClient({ policyRow: { id: 42, library_id: 7 },
       intentRow: { id: 50, intent_version: 3 } });
