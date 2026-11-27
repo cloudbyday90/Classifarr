@@ -347,7 +347,7 @@ async function markExecutionSnapshotPersisted({ client, gateId, snapshotId, even
          updated_at = $5
      WHERE id = $1
        AND state = $6
-     RETURNING id, rollback_snapshot_id`,
+     RETURNING id, rollback_snapshot_id, migration_event_id`,
     [
       gateId,
       POLICY_LIBRARY_REBUILD_EXECUTION_STATE_IDS.SNAPSHOT_PERSISTED,

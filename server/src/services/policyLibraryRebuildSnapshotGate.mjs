@@ -168,7 +168,7 @@ function buildPersistedResult({
       verificationRunFingerprint: execution.verification_run_fingerprint,
       acceptanceExpiresAt: execution.acceptance_expires_at,
       rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollback_snapshot_id),
-      migrationEventId: Number(execution.migration_event_id),
+      migrationEventId: normalizeDatabaseBigintId(execution.migration_event_id),
       idempotent,
     },
     application: {
@@ -253,7 +253,7 @@ function validatePolicyLibraryRebuildSnapshotGate(result = {}) {
         !Number.isInteger(execution.verificationRunId) ||
         !hasFingerprint(execution.verificationRunFingerprint) ||
         normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
-        !Number.isInteger(execution.migrationEventId) ||
+        normalizeDatabaseBigintId(execution.migrationEventId) === null ||
         result.application?.persistedRollbackSnapshotPresent !== true) {
       issues.push({
         riskId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.UNSAFE_GATE_OUTPUT,
@@ -410,6 +410,15 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         trustedTransition.replayProtection.idempotencyKey
       );
       if (priorExecution?.state === POLICY_LIBRARY_REBUILD_EXECUTION_STATE_IDS.SNAPSHOT_PERSISTED) {
+        if (normalizeDatabaseBigintId(priorExecution.migration_event_id) === null) {
+          return buildBlockedResult({
+            statusId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
+            now: executionTime,
+            riskId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.UNSAFE_GATE_OUTPUT,
+            message: 'Persisted rollback snapshot does not have a valid migration event reference.',
+            transition: trustedTransition,
+          });
+        }
         return buildPersistedResult({
           statusId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.ALREADY_PERSISTED,
           now: executionTime,
@@ -465,14 +474,14 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         throw error;
       }
 
-      const eventId = await createMigrationEvent({
+      const eventId = normalizeDatabaseBigintId(await createMigrationEvent({
         client,
         intent,
         transition: trustedTransition,
         snapshotId,
-      });
-      if (!eventId) {
-        const error = new Error('Library rebuild migration event insert did not return an identifier.');
+      }));
+      if (eventId === null) {
+        const error = new Error('Library rebuild migration event insert did not return a valid identifier.');
         error.riskId = POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.MIGRATION_EVENT_INSERT_FAILED;
         throw error;
       }
@@ -485,8 +494,9 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         now: executionTime,
       });
       if (normalizeDatabaseBigintId(persisted?.id) !== gateId ||
-          normalizeDatabaseBigintId(persisted?.rollback_snapshot_id) !== snapshotId) {
-        throw new Error('Library rebuild capture did not persist the expected rollback snapshot.');
+          normalizeDatabaseBigintId(persisted?.rollback_snapshot_id) !== snapshotId ||
+          normalizeDatabaseBigintId(persisted?.migration_event_id) !== eventId) {
+        throw new Error('Library rebuild capture did not persist the expected snapshot and migration event on the locked gate.');
       }
 
       return buildPersistedResult({

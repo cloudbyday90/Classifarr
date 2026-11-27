@@ -196,6 +196,7 @@ function createClient({
   active = null,
   verificationRun: persistedVerificationRun = null,
   intentPresent = true,
+  eventInsertId = 951,
   failSnapshotInsert = false,
 } = {}) {
   return {
@@ -281,11 +282,11 @@ function createClient({
       }
 
       if (statement.includes('INSERT INTO policy_intent_migration_events')) {
-        return { rows: [{ id: 951 }], rowCount: 1 };
+        return { rows: [{ id: eventInsertId }], rowCount: 1 };
       }
 
       if (statement.includes('RETURNING id, rollback_snapshot_id')) {
-        return { rows: [{ id: 801, rollback_snapshot_id: 901 }], rowCount: 1 };
+        return { rows: [{ id: 801, rollback_snapshot_id: 901, migration_event_id: 951 }], rowCount: 1 };
       }
 
       return { rows: [], rowCount: 1 };
@@ -294,6 +295,31 @@ function createClient({
 }
 
 describe('policyLibraryRebuildSnapshotGate', () => {
+  test('refuses an unsafe event insert acknowledgement before completing capture', async () => {
+    const { rebuildProposal, transition } = acceptedTransition();
+    const client = createClient({ verificationRun: verificationRun(transition), eventInsertId: 9007199254740992 });
+    const result = await persistPolicyLibraryRebuildRollbackSnapshot({
+      dbClient: { withTransaction: work => work(client) }, proposal: rebuildProposal, transition, now: NOW,
+    });
+    expect(result.statusId).toBe(POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.FAILED_ROLLED_BACK);
+    expect(result.validation.issues[0].riskId).toBe(POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.MIGRATION_EVENT_INSERT_FAILED);
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('migration_event_id = $4'), expect.anything());
+  });
+
+  test('refuses unsafe numeric event references in capture replay', async () => {
+    const { rebuildProposal, transition } = acceptedTransition();
+    const client = createClient({
+      verificationRun: verificationRun(transition),
+      existing: existingExecution({ migration_event_id: 9007199254740992 }),
+    });
+    const result = await persistPolicyLibraryRebuildRollbackSnapshot({
+      dbClient: { withTransaction: work => work(client) }, proposal: rebuildProposal, transition, now: NOW,
+    });
+    expect(result.statusId).toBe(POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE);
+    expect(result.validation.issues[0].riskId).toBe(POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.UNSAFE_GATE_OUTPUT);
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO policy_intent_rollback_snapshots'), expect.anything());
+  });
+
   test('audits the snapshot-gate contract without opening a transaction', () => {
     const audit = buildPolicyLibraryRebuildSnapshotGateAudit();
 

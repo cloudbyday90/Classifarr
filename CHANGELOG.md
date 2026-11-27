@@ -56,6 +56,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 - **Library rebuild replacement events** — Keep event IDs exact through
   replacement and removal readiness, and verify the saved event link
   before replacement commits.
+- **Library rebuild capture events** — Preserve exact event IDs in capture
+  and replay receipts, and verify the saved event link before committing.
 
 ## [v0.49.5-beta] - 2026-11-24
 
