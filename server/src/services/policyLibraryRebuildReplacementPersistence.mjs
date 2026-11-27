@@ -36,7 +36,7 @@ function nextIntentVersion(intent) {
 }
 
 function projectVerificationRunMetadata(verificationRun = {}) {
-  const verificationRunId = Number(verificationRun.id);
+  const verificationRunId = normalizeDatabaseBigintId(verificationRun.id);
   const verifierFingerprint = typeof verificationRun.verifierFingerprint === 'string'
     ? verificationRun.verifierFingerprint.trim()
     : '';
@@ -44,7 +44,7 @@ function projectVerificationRunMetadata(verificationRun = {}) {
     ? verificationRun.verifierStatusId.trim()
     : '';
 
-  if (!Number.isInteger(verificationRunId) || verificationRunId < 1 ||
+  if (verificationRunId === null ||
       !SHA256_FINGERPRINT_PATTERN.test(verifierFingerprint) || !verifierStatusId) {
     throw new TypeError('Replacement migration events require a validated verification receipt binding.');
   }

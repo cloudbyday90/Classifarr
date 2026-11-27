@@ -139,7 +139,7 @@ describe('policyMigrationVerificationRunContract', () => {
     const result = buildPolicyMigrationVerificationRunResult({
       statusId: POLICY_MIGRATION_VERIFICATION_RUN_STATUS_IDS.PERSISTED,
       coordinatorResult: readyCoordinatorResult(),
-      verificationRun: record,
+      verificationRun: { ...record, id: 701 },
     });
 
     expect(result).toEqual(expect.objectContaining({

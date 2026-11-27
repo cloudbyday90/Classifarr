@@ -100,7 +100,7 @@ function summarizeExecution(value = null) {
     replacementIntentId: normalizePositiveInteger(execution.replacementIntentId),
     replacementEventId: normalizeDatabaseBigintId(execution.replacementEventId),
     rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollbackSnapshotId),
-    verificationRunId: normalizePositiveInteger(execution.verificationRunId),
+    verificationRunId: normalizeDatabaseBigintId(execution.verificationRunId),
     transitionFingerprint: normalizeFingerprint(execution.transitionFingerprint),
     proposalFingerprint: normalizeFingerprint(execution.proposalFingerprint),
     verificationRunFingerprint: normalizeFingerprint(execution.verificationRunFingerprint),
@@ -223,7 +223,7 @@ function validatePolicyLibraryRebuildCutoverResult(result = {}) {
       !Number.isInteger(execution.replacementIntentId) ||
       normalizeDatabaseBigintId(execution.replacementEventId) === null ||
       normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
-      !Number.isInteger(execution.verificationRunId) ||
+      normalizeDatabaseBigintId(execution.verificationRunId) === null ||
       !SHA256_FINGERPRINT_PATTERN.test(execution.transitionFingerprint || '') ||
       !SHA256_FINGERPRINT_PATTERN.test(execution.proposalFingerprint || '') ||
       !SHA256_FINGERPRINT_PATTERN.test(execution.verificationRunFingerprint || '') ||

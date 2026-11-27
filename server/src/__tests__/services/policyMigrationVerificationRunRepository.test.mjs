@@ -109,6 +109,19 @@ describe('policyMigrationVerificationRunRepository', () => {
     );
   });
 
+  test('rejects an invalid insert acknowledgement without trying replay', async () => {
+    const record = buildPolicyMigrationVerificationRunRecord(readyCoordinatorResult());
+    const client = {
+      query: jest.fn().mockResolvedValue({ rows: [rowFromRecord(record, { id: 9007199254740992 })] }),
+    };
+
+    await expect(claimPolicyMigrationVerificationRun({
+      client,
+      coordinatorResult: readyCoordinatorResult(),
+    })).rejects.toThrow('did not return a valid identifier');
+    expect(client.query).toHaveBeenCalledTimes(1);
+  });
+
   test('surfaces a collision as conflicted instead of treating it as a replay', async () => {
     const record = buildPolicyMigrationVerificationRunRecord(readyCoordinatorResult());
     const client = {

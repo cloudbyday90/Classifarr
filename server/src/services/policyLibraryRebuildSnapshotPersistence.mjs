@@ -301,7 +301,7 @@ async function createRollbackSnapshot({
   return getFirstRow(result)?.id ?? null;
 }
 
-async function createMigrationEvent({ client, intent, transition, snapshotId }) {
+async function createMigrationEvent({ client, intent, transition, snapshotId, verificationRun }) {
   const result = await client.query(
     `INSERT INTO policy_intent_migration_events (
        intent_id,
@@ -329,6 +329,8 @@ async function createMigrationEvent({ client, intent, transition, snapshotId }) 
         rollbackPlanFingerprint: transition.rollbackPlanFingerprint.fingerprint,
         idempotencyKey: transition.replayProtection.idempotencyKey,
         snapshotId,
+        verificationRunId: verificationRun.id,
+        verificationRunFingerprint: verificationRun.verifierFingerprint,
         actorSourceId: transition.acceptance.actorSourceId,
         actorReference: transition.acceptance.actorReference,
       }),
@@ -347,7 +349,7 @@ async function markExecutionSnapshotPersisted({ client, gateId, snapshotId, even
          updated_at = $5
      WHERE id = $1
        AND state = $6
-     RETURNING id, rollback_snapshot_id, migration_event_id`,
+     RETURNING id, rollback_snapshot_id, migration_event_id, verification_run_id, verification_run_fingerprint`,
     [
       gateId,
       POLICY_LIBRARY_REBUILD_EXECUTION_STATE_IDS.SNAPSHOT_PERSISTED,

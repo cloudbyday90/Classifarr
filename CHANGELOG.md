@@ -58,6 +58,9 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   before replacement commits.
 - **Library rebuild capture events** — Preserve exact event IDs in capture
   and replay receipts, and verify the saved event link before committing.
+- **Library rebuild verification runs** — Keep exact receipt IDs from claim
+  through removal readiness and require capture evidence before using a
+  large pending verification link.
 
 ## [v0.49.5-beta] - 2026-11-24
 

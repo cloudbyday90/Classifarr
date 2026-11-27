@@ -9,6 +9,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 import {
   POLICY_MIGRATION_VERIFICATION_COORDINATOR_STATUS_IDS,
@@ -157,7 +158,7 @@ function summarizeVerificationRun(value = {}) {
   const run = asObject(value);
 
   return {
-    id: normalizePositiveInteger(run.id),
+    id: normalizeDatabaseBigintId(run.id),
     runVersion: normalizePositiveInteger(run.runVersion ?? run.run_version),
     policyId: normalizePositiveInteger(run.policyId ?? run.policy_id),
     intentId: normalizePositiveInteger(run.intentId ?? run.intent_id),
@@ -381,7 +382,7 @@ function validatePolicyMigrationVerificationRunResult(result = {}) {
     issues.push(buildIssue(POLICY_MIGRATION_VERIFICATION_RUN_RISK_IDS.UNSAFE_HANDOFF_OUTPUT));
   }
 
-  if (requiresReceipt && (!verificationRun ||
+  if (requiresReceipt && (normalizeDatabaseBigintId(verificationRun?.id) === null ||
       !SHA256_FINGERPRINT_PATTERN.test(normalizeString(
         asObject(verificationRun).acceptanceTransitionFingerprint,
         64,

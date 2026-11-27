@@ -17,22 +17,11 @@ const { createPolicyLibraryRebuildLegacyFinalRemovalAuditService } =
   await import('../../services/policyLibraryRebuildLegacyFinalRemovalAuditService.mjs');
 const { validatePolicyLibraryRebuildLegacyDeletionReadiness } = await import('../../services/policyLibraryRebuildLegacyDeletionReadiness.mjs');
 const { validatePolicyLibraryRebuildLegacyFinalRemovalPlan } = await import('../../services/policyLibraryRebuildLegacyFinalRemovalPlan.mjs');
-const { buildPolicyLibraryRebuildLegacyRemovalInventory } = await import('../../services/policyLibraryRebuildLegacyRemovalInventory.mjs');
 const { loadPolicyLibraryRebuildLegacyDeletionEvidence } = await import('../../services/policyLibraryRebuildLegacyDeletionReadinessRepository.mjs');
 
-const { createLibraryRebuildIdentityFixture } = await import('../setup/createLibraryRebuildIdentityFixture.mjs');
-const { fixture, setNextMigrationEventId } = createLibraryRebuildIdentityFixture(db);
-
-const buildRemovalInventory = () => buildPolicyLibraryRebuildLegacyRemovalInventory({
-  artifacts: [{
-    path: 'client/src/components/policies/LegacyProfileRefreshPanel.vue',
-    owner: 'policy-builder', decisionId: 'delete_after_migration', verifierKindId: 'representative_replay',
-    replacement: 'Synthetic native intent readiness proof',
-    removalGateIds: ['native_intent_runtime_authority'],
-    rollbackPlan: { snapshotRequired: true, restorePathRequired: true, retentionWindowDays: 30, nativeStorageMigrationAllowed: false },
-    normalWorkflowAllowed: false,
-  }],
-});
+const { buildLibraryRebuildRemovalInventoryFixture: buildRemovalInventory, createLibraryRebuildIdentityFixture } =
+  await import('../setup/createLibraryRebuildIdentityFixture.mjs');
+const { fixture, setNextMigrationEventId, closeRollbackWindow } = createLibraryRebuildIdentityFixture(db);
 
 async function cutoverEvidence({ policyId, args, snapshotId, gateId }, replacementEventId = null) {
   const captured = await persistPolicyLibraryRebuildRollbackSnapshot(args);
@@ -72,12 +61,6 @@ async function cutoverEvidence({ policyId, args, snapshotId, gateId }, replaceme
     event_id: replacementReplay.execution.replacementEventId,
   }]);
   return { captured, cutover, replacementReplay, eventId: rows[0].event_id };
-}
-
-async function closeRollbackWindow({ policyId, args, snapshotId }) {
-  await db.query("UPDATE policy_intent_rollback_snapshots SET snapshot_payload = '{}'::jsonb, payload_redacted = true WHERE id = $1", [snapshotId]);
-  const now = new Date(args.now.getTime() + 60 * 24 * 60 * 60 * 1000);
-  return { policyId, now };
 }
 
 const readiness = createPolicyLibraryRebuildLegacyDeletionReadinessService({ dbClient: db, buildRemovalInventory });

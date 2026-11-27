@@ -115,7 +115,7 @@ function summarizeExecutionGate(value = {}) {
     rollbackSnapshotId: normalizeDatabaseBigintId(
       gate.rollback_snapshot_id ?? gate.rollbackSnapshotId,
     ),
-    verificationRunId: normalizePositiveInteger(
+    verificationRunId: normalizeDatabaseBigintId(
       gate.verification_run_id ?? gate.verificationRunId,
     ),
     transitionFingerprint: normalizeFingerprint(
@@ -137,7 +137,7 @@ function summarizeVerificationReceipt(value = {}) {
   const receipt = asObject(value);
 
   return {
-    verificationRunId: normalizePositiveInteger(receipt.id),
+    verificationRunId: normalizeDatabaseBigintId(receipt.id),
     policyId: normalizePositiveInteger(receipt.policy_id ?? receipt.policyId),
     originalIntentId: normalizePositiveInteger(receipt.intent_id ?? receipt.intentId),
     libraryId: normalizePositiveInteger(receipt.library_id ?? receipt.libraryId),
@@ -212,7 +212,9 @@ function summarizeReplacementEvent(value = {}) {
     rollbackSnapshotId: normalizeEventReference(
       event.rollback_snapshot_id ?? event.rollbackSnapshotId, event.rollback_snapshot_id_json_type,
     ),
-    verificationRunId: normalizePositiveInteger(event.verification_run_id ?? event.verificationRunId),
+    verificationRunId: normalizeEventReference(
+      event.verification_run_id ?? event.verificationRunId, event.verification_run_id_json_type,
+    ),
     transitionFingerprint: normalizeFingerprint(
       event.transition_fingerprint ?? event.transitionFingerprint,
     ),
@@ -527,7 +529,7 @@ function validatePolicyLibraryRebuildLegacyDeletionReadiness(readiness = {}) {
 
   if (ready && (normalizeDatabaseBigintId(result.cutover?.gateId) === null ||
       normalizeDatabaseBigintId(result.cutover?.replacementEventId) === null ||
-      !result.verification?.verificationRunId ||
+      normalizeDatabaseBigintId(result.verification?.verificationRunId) === null ||
       normalizeDatabaseBigintId(result.rollback?.rollbackSnapshotId) === null ||
       result.rollback?.dispositionId !== POLICY_LIBRARY_REBUILD_LEGACY_DELETION_READINESS_DISPOSITION_IDS
         .WINDOW_CLOSED_PAYLOAD_REDACTED ||

@@ -112,7 +112,7 @@ function summarizeReadiness(value = {}) {
       appliedAt: normalizeIsoDate(cutover.appliedAt),
     },
     verification: {
-      verificationRunId: normalizePositiveInteger(verification.verificationRunId),
+      verificationRunId: normalizeDatabaseBigintId(verification.verificationRunId),
       verifierFingerprint: normalizeFingerprint(verification.verifierFingerprint),
       verifierStatusId: normalizeString(verification.verifierStatusId),
     },
@@ -340,7 +340,8 @@ function validatePolicyLibraryRebuildLegacyFinalRemovalPlan(plan = {}) {
       normalizeDatabaseBigintId(result.cutover?.replacementEventId) === null ||
       !SHA256_FINGERPRINT_PATTERN.test(result.cutover?.transitionFingerprint || '') ||
       !SHA256_FINGERPRINT_PATTERN.test(result.cutover?.proposalFingerprint || '') ||
-      !normalizeIsoDate(result.cutover?.appliedAt) || !result.verification?.verificationRunId ||
+      !normalizeIsoDate(result.cutover?.appliedAt) ||
+      normalizeDatabaseBigintId(result.verification?.verificationRunId) === null ||
       !SHA256_FINGERPRINT_PATTERN.test(result.verification?.verifierFingerprint || '') ||
       result.verification?.verifierStatusId !== 'no_migration_differences' ||
       normalizeDatabaseBigintId(result.rollback?.rollbackSnapshotId) === null ||

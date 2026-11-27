@@ -7,6 +7,7 @@
  */
 
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+import { hasPolicyLibraryRebuildCaptureRunProof } from './policyLibraryRebuildCaptureRunProof.mjs';
 import {
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS,
   validatePolicyLibraryRebuildAcceptanceTransition,
@@ -161,7 +162,7 @@ function buildAppliedResult({
       rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollback_snapshot_id),
       transitionFingerprint: execution.transition_fingerprint,
       proposalFingerprint: execution.proposal_fingerprint,
-      verificationRunId: Number(verificationRun.id),
+      verificationRunId: normalizeDatabaseBigintId(verificationRun.id),
       verificationRunFingerprint: verificationRun.verifierFingerprint,
       verificationRunStatusId: verificationRun.verifierStatusId,
       appliedAt: execution.replacement_applied_at ?? now.toISOString(),
@@ -246,7 +247,7 @@ function validatePolicyLibraryRebuildReplacementGate(result = {}) {
       normalizeDatabaseBigintId(execution.replacementEventId) === null ||
       normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
       !hasFingerprint(execution.transitionFingerprint) ||
-      !Number.isInteger(execution.verificationRunId) ||
+      normalizeDatabaseBigintId(execution.verificationRunId) === null ||
       !hasFingerprint(execution.verificationRunFingerprint) ||
       execution.verificationRunStatusId !== 'no_migration_differences' ||
       result.application?.replacementApplied !== true ||
@@ -434,6 +435,15 @@ async function applyPolicyLibraryRebuildReplacement({
           execution,
           verificationRun: verificationBinding.verificationRun,
           idempotent: true,
+        });
+      }
+
+      if (!(await hasPolicyLibraryRebuildCaptureRunProof({ client, execution }))) {
+        return buildBlockedResult({
+          statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_VERIFICATION_RUN,
+          now: executionTime,
+          riskId: POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS.VERIFICATION_RUN_EXECUTION_BINDING_MISMATCH,
+          message: 'Persisted rollback snapshot cannot prove its verification receipt binding.',
         });
       }
 

@@ -16,7 +16,7 @@ test.each([
   ['upper', 915, 815, '9007199254740993'],
   ['maximum', 916, 816, '9223372036854775807'],
 ])('preserves the %s capture event identity from storage through replay', async (tag, snapshotId, gateId, eventId) => {
-  const item = await fixture(`capture-event-${tag}`, snapshotId, gateId, eventId);
+  const item = await fixture(`capture-event-${tag}`, snapshotId, gateId, { captureEventId: eventId });
   const captured = await persistPolicyLibraryRebuildRollbackSnapshot(item.args);
   const replay = await persistPolicyLibraryRebuildRollbackSnapshot(item.args);
   expect(captured).toMatchObject({
@@ -44,7 +44,7 @@ test.each([
 test('rolls back capture when completion saved another event from the same policy', async () => {
   const existingEventId = '9007199254741032';
   const insertedEventId = '9007199254741033';
-  const item = await fixture('capture-event-link', 917, 817, insertedEventId);
+  const item = await fixture('capture-event-link', 917, 817, { captureEventId: insertedEventId });
   await db.query(`INSERT INTO policy_intent_migration_events
     (id, intent_id, policy_id, event_type, actor_type, source_version, target_version, reason_code)
     VALUES ($1, $2, $3, 'rollback_snapshot_created', 'operator', 1, 1, 'synthetic_fixture')`,

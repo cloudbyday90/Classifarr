@@ -7,6 +7,7 @@
  */
 
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+import { hasPolicyLibraryRebuildCaptureRunProof } from './policyLibraryRebuildCaptureRunProof.mjs';
 import {
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS,
   validatePolicyLibraryRebuildAcceptanceTransition,
@@ -164,7 +165,7 @@ function buildPersistedResult({
       transitionFingerprint: execution.transition_fingerprint,
       proposalFingerprint: execution.proposal_fingerprint,
       rollbackPlanFingerprint: execution.rollback_plan_fingerprint,
-      verificationRunId: Number(execution.verification_run_id),
+      verificationRunId: normalizeDatabaseBigintId(execution.verification_run_id),
       verificationRunFingerprint: execution.verification_run_fingerprint,
       acceptanceExpiresAt: execution.acceptance_expires_at,
       rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollback_snapshot_id),
@@ -250,7 +251,7 @@ function validatePolicyLibraryRebuildSnapshotGate(result = {}) {
         !hasFingerprint(execution.transitionFingerprint) ||
         !hasFingerprint(execution.proposalFingerprint) ||
         !hasFingerprint(execution.rollbackPlanFingerprint) ||
-        !Number.isInteger(execution.verificationRunId) ||
+        normalizeDatabaseBigintId(execution.verificationRunId) === null ||
         !hasFingerprint(execution.verificationRunFingerprint) ||
         normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
         normalizeDatabaseBigintId(execution.migrationEventId) === null ||
@@ -402,6 +403,7 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
           transition: trustedTransition,
         });
       }
+      const { verificationRun } = verificationBinding;
 
       await expirePriorExecutionGates(client, trustedTransition.policyContext.policyId, executionTime);
 
@@ -416,6 +418,15 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
             now: executionTime,
             riskId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.UNSAFE_GATE_OUTPUT,
             message: 'Persisted rollback snapshot does not have a valid migration event reference.',
+            transition: trustedTransition,
+          });
+        }
+        if (!(await hasPolicyLibraryRebuildCaptureRunProof({ client, execution: priorExecution }))) {
+          return buildBlockedResult({
+            statusId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
+            now: executionTime,
+            riskId: POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS.VERIFICATION_RUN_EXECUTION_BINDING_MISMATCH,
+            message: 'Persisted rollback snapshot cannot prove its verification receipt binding.',
             transition: trustedTransition,
           });
         }
@@ -446,7 +457,7 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
       const gateId = normalizeDatabaseBigintId(await createExecutionGate(
         client,
         trustedTransition,
-        verificationBinding.verificationRun,
+        verificationRun,
         executionTime,
       ));
       if (!gateId) {
@@ -479,6 +490,7 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         intent,
         transition: trustedTransition,
         snapshotId,
+        verificationRun,
       }));
       if (eventId === null) {
         const error = new Error('Library rebuild migration event insert did not return a valid identifier.');
@@ -495,8 +507,10 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
       });
       if (normalizeDatabaseBigintId(persisted?.id) !== gateId ||
           normalizeDatabaseBigintId(persisted?.rollback_snapshot_id) !== snapshotId ||
-          normalizeDatabaseBigintId(persisted?.migration_event_id) !== eventId) {
-        throw new Error('Library rebuild capture did not persist the expected snapshot and migration event on the locked gate.');
+          normalizeDatabaseBigintId(persisted?.migration_event_id) !== eventId ||
+          normalizeDatabaseBigintId(persisted?.verification_run_id) !== verificationRun.id ||
+          persisted?.verification_run_fingerprint !== verificationRun.verifierFingerprint) {
+        throw new Error('Library rebuild capture did not persist the expected evidence on the locked gate.');
       }
 
       return buildPersistedResult({
@@ -511,8 +525,8 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
           transition_fingerprint: trustedTransition.transitionFingerprint.fingerprint,
           proposal_fingerprint: trustedTransition.proposalFingerprint.fingerprint,
           rollback_plan_fingerprint: trustedTransition.rollbackPlanFingerprint.fingerprint,
-          verification_run_id: verificationBinding.verificationRun.id,
-          verification_run_fingerprint: verificationBinding.verificationRun.verifierFingerprint,
+          verification_run_id: verificationRun.id,
+          verification_run_fingerprint: verificationRun.verifierFingerprint,
           acceptance_expires_at: trustedTransition.acceptance.expiresAt,
           rollback_snapshot_id: snapshotId,
           migration_event_id: eventId,

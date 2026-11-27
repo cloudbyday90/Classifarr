@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_MIGRATION_PREVIEW_STATUS_IDS,
 } from './policyMigrationPreviewContract.mjs';
@@ -90,7 +91,7 @@ function normalizeVerificationRun(row = {}) {
   const source = asObject(row);
 
   return {
-    id: normalizePositiveInteger(source.id),
+    id: normalizeDatabaseBigintId(source.id),
     runVersion: normalizePositiveInteger(source.run_version),
     policyId: normalizePositiveInteger(source.policy_id),
     intentId: normalizePositiveInteger(source.intent_id),
@@ -282,7 +283,7 @@ async function lockPolicyMigrationVerificationRunById({ client, verificationRunI
     throw new TypeError('Library rebuild verification binding requires a transaction client.');
   }
 
-  const normalizedVerificationRunId = normalizePositiveInteger(verificationRunId);
+  const normalizedVerificationRunId = normalizeDatabaseBigintId(verificationRunId);
   if (!normalizedVerificationRunId) {
     return null;
   }
@@ -322,7 +323,7 @@ async function loadPolicyLibraryRebuildExecutionVerificationRunBinding({
   transition,
   proposal,
 } = {}) {
-  const expectedVerificationRunId = normalizePositiveInteger(execution?.verification_run_id);
+  const expectedVerificationRunId = normalizeDatabaseBigintId(execution?.verification_run_id);
   const expectedVerifierFingerprint = normalizeString(execution?.verification_run_fingerprint, 64);
 
   if (!expectedVerificationRunId || !SHA256_FINGERPRINT_PATTERN.test(expectedVerifierFingerprint)) {

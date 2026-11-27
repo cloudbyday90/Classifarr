@@ -11,6 +11,7 @@
 import {
   buildPolicyMigrationVerificationRunRecord,
 } from './policyMigrationVerificationRunContract.mjs';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 const POLICY_MIGRATION_VERIFICATION_RUN_TABLE = 'policy_migration_verification_runs';
 
@@ -40,7 +41,7 @@ function normalizeVerificationRunRow(row = {}) {
   const source = asObject(row);
 
   return {
-    id: normalizePositiveInteger(source.id),
+    id: normalizeDatabaseBigintId(source.id),
     runVersion: normalizePositiveInteger(source.run_version ?? source.runVersion),
     policyId: normalizePositiveInteger(source.policy_id ?? source.policyId),
     intentId: normalizePositiveInteger(source.intent_id ?? source.intentId),
@@ -220,7 +221,12 @@ async function insertPolicyMigrationVerificationRun({ client, record }) {
     ],
   );
 
-  return normalizeVerificationRunRow(firstRow(result));
+  const row = firstRow(result);
+  const run = normalizeVerificationRunRow(row);
+  if (row && run.id === null) {
+    throw new Error('Migration verification-run insert did not return a valid identifier.');
+  }
+  return run;
 }
 
 async function findPolicyMigrationVerificationRun({ client, idempotencyKey }) {

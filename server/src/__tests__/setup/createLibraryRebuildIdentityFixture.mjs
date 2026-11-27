@@ -3,7 +3,21 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createPolicyEngineIntegrationFixture } from './createPolicyEngineIntegrationFixture.mjs';
 import { buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput } from '../../services/policyLibraryPolicyRebuild.mjs';
 import { buildPolicyLibraryRebuildAcceptanceTransition } from '../../services/policyLibraryRebuildAcceptanceTransition.mjs';
+import { buildPolicyLibraryRebuildLegacyRemovalInventory } from '../../services/policyLibraryRebuildLegacyRemovalInventory.mjs';
 import { buildPolicyRollbackSnapshotWindow } from '../../services/policyRollbackSnapshotWindow.mjs';
+
+export function buildLibraryRebuildRemovalInventoryFixture() {
+  return buildPolicyLibraryRebuildLegacyRemovalInventory({
+    artifacts: [{
+      path: 'client/src/components/policies/LegacyProfileRefreshPanel.vue',
+      owner: 'policy-builder', decisionId: 'delete_after_migration', verifierKindId: 'representative_replay',
+      replacement: 'Synthetic native intent readiness proof',
+      removalGateIds: ['native_intent_runtime_authority'],
+      rollbackPlan: { snapshotRequired: true, restorePathRequired: true, retentionWindowDays: 30, nativeStorageMigrationAllowed: false },
+      normalWorkflowAllowed: false,
+    }],
+  });
+}
 
 function buildInputs({ policyId, intentId, libraryId, now }) {
   const action = {
@@ -78,7 +92,10 @@ export function createLibraryRebuildIdentityFixture(db) {
     return db.query("SELECT setval(pg_get_serial_sequence('policy_intent_migration_events', 'id'), $1::bigint, false)", [id]);
   }
 
-  async function fixture(tag, snapshotId, gateId, requestedCaptureEventId = null) {
+  async function fixture(tag, snapshotId, gateId, {
+    captureEventId: requestedCaptureEventId = null,
+    seedVerification = true,
+  } = {}) {
     const { policyId, libraryId, mediaServerId } = await createPolicyEngineIntegrationFixture(db, {
       libraryName: `Rebuild ${tag}`, policyName: `Rebuild ${tag}`,
     });
@@ -99,7 +116,9 @@ export function createLibraryRebuildIdentityFixture(db) {
       VALUES ($1, 'radarr', $2, 67, '/synthetic/animation', 87)`, [libraryId, arr.rows[0].id]);
     const now = new Date();
     const { proposal, transition } = buildInputs({ policyId, intentId, libraryId, now });
-    await seedVerificationReceipt(db, { policyId, intentId, libraryId, transition, now });
+    if (seedVerification) {
+      await seedVerificationReceipt(db, { policyId, intentId, libraryId, transition, now });
+    }
     // Each case owns its sequence range in this disposable suite database.
     for (const [table, id] of [
       ['policy_intent_rollback_snapshots', snapshotId],
@@ -112,5 +131,11 @@ export function createLibraryRebuildIdentityFixture(db) {
     return { policyId, intentId, snapshotId, gateId, captureEventId, args: { dbClient: db, proposal, transition, now } };
   }
 
-  return { fixture, setNextMigrationEventId };
+  async function closeRollbackWindow({ policyId, args, snapshotId }) {
+    await db.query("UPDATE policy_intent_rollback_snapshots SET snapshot_payload = '{}'::jsonb, payload_redacted = true WHERE id = $1", [snapshotId]);
+    const now = new Date(args.now.getTime() + 60 * 24 * 60 * 60 * 1000);
+    return { policyId, now };
+  }
+
+  return { fixture, setNextMigrationEventId, closeRollbackWindow };
 }

@@ -286,7 +286,13 @@ function createClient({
       }
 
       if (statement.includes('RETURNING id, rollback_snapshot_id')) {
-        return { rows: [{ id: 801, rollback_snapshot_id: 901, migration_event_id: 951 }], rowCount: 1 };
+        return { rows: [{
+          id: 801,
+          rollback_snapshot_id: 901,
+          migration_event_id: 951,
+          verification_run_id: persistedVerificationRun?.id,
+          verification_run_fingerprint: persistedVerificationRun?.verifier_fingerprint,
+        }], rowCount: 1 };
       }
 
       return { rows: [], rowCount: 1 };
