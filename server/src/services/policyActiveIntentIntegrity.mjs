@@ -1,3 +1,5 @@
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+
 const POLICY_ACTIVE_INTENT_INTEGRITY_VERSION = 'policy.active_intent_integrity.v1';
 
 const POLICY_ACTIVE_INTENT_INTEGRITY_STATUS_IDS = Object.freeze({
@@ -26,6 +28,14 @@ function asTimestamp(value) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function compareIntentIds(left, right) {
+  const leftId = BigInt(left);
+  const rightId = BigInt(right);
+  if (leftId < rightId) return -1;
+  if (leftId > rightId) return 1;
+  return 0;
+}
+
 function compareCandidateAuthority(left, right) {
   const validationPriority = { valid: 0, warning: 1 };
   const leftValidationPriority = validationPriority[left.validationStatus] ?? 2;
@@ -43,20 +53,19 @@ function compareCandidateAuthority(left, right) {
     if (timestampDifference !== 0) return timestampDifference;
   }
 
-  return right.id - left.id;
+  return compareIntentIds(right.id, left.id);
 }
 
 function normalizeActiveIntent(row = {}) {
   const policyId = normalizePolicyId(row.policyId ?? row.policy_id);
-  const id = Number(row.id);
   const intentVersion = Number(row.intentVersion ?? row.intent_version);
 
-  if (!policyId || !Number.isInteger(id) || id <= 0 || !Number.isInteger(intentVersion) || intentVersion <= 0) {
+  if (!policyId || !Number.isInteger(intentVersion) || intentVersion <= 0) {
     return null;
   }
 
   return {
-    id,
+    id: normalizeDatabaseBigintId(row.id),
     policyId,
     intentVersion,
     validationStatus: normalizeString(row.validationStatus ?? row.validation_status).toLowerCase(),
@@ -82,14 +91,14 @@ function buildPolicyActiveIntentIntegrityReport({ activeIntents = [] } = {}) {
     .filter(([, intents]) => intents.length > 1)
     .sort(([leftPolicyId], [rightPolicyId]) => leftPolicyId - rightPolicyId)
     .map(([policyId, intents]) => {
-      const safeCandidates = intents
-        .filter(intent => SAFE_ACTIVE_INTENT_VALIDATION_STATUSES.has(intent.validationStatus))
-        .sort(compareCandidateAuthority);
-      const canonicalIntent = safeCandidates[0] || null;
-      const duplicateIntentIds = intents
-        .map(intent => intent.id)
-        .filter(intentId => intentId !== canonicalIntent?.id)
-        .sort((left, right) => left - right);
+      const activeIntentIds = [...new Set(intents.map(intent => intent.id).filter(id => id !== null))]
+        .sort(compareIntentIds);
+      // Keep incomplete duplicate groups visible and withhold a repair candidate.
+      const canonicalIntent = activeIntentIds.length === intents.length
+        ? intents
+          .filter(intent => SAFE_ACTIVE_INTENT_VALIDATION_STATUSES.has(intent.validationStatus))
+          .sort(compareCandidateAuthority)[0]
+        : null;
 
       return {
         policyId,
@@ -99,8 +108,8 @@ function buildPolicyActiveIntentIntegrityReport({ activeIntents = [] } = {}) {
         activeIntentCount: intents.length,
         canonicalIntentId: canonicalIntent?.id ?? null,
         canonicalIntentVersion: canonicalIntent?.intentVersion ?? null,
-        duplicateIntentIds,
-        activeIntentIds: intents.map(intent => intent.id).sort((left, right) => left - right),
+        duplicateIntentIds: activeIntentIds.filter(intentId => intentId !== canonicalIntent?.id),
+        activeIntentIds,
       };
     });
 

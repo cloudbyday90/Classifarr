@@ -76,6 +76,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   and verify the private receipt link before saving an observation.
 - **Native intent change receipts** — Preserve exact receipt, target intent,
   and migration event IDs, and require stored evidence to replay large links.
+- **Active-intent integrity report** — Preserve exact BIGINT intent IDs in
+  duplicate findings and block repair candidates when identity evidence is incomplete.
 
 ## [v0.49.5-beta] - 2026-11-24
 

@@ -54,6 +54,41 @@ describe('policyActiveIntentIntegrity', () => {
     }));
   });
 
+  test('breaks authority ties with the exact intent ID and sorts IDs in numeric order', () => {
+    const rows = ['9007199254740992', '9007199254740993', '9007199254740991'].map(id => ({
+      id, policy_id: 10, intent_version: 1, validation_status: 'valid',
+    }));
+    const report = buildPolicyActiveIntentIntegrityReport({ activeIntents: rows });
+
+    expect(report.findings[0]).toMatchObject({
+      activeIntentCount: 3,
+      canonicalIntentId: '9007199254740993',
+      activeIntentIds: [9007199254740991, '9007199254740992', '9007199254740993'],
+      duplicateIntentIds: [9007199254740991, '9007199254740992'],
+    });
+  });
+
+  test.each([0, 9007199254740992, '9223372036854775808', '11'])(
+    'blocks a duplicate group with an unusable or repeated ID (%s)',
+    id => {
+      const report = buildPolicyActiveIntentIntegrityReport({
+        activeIntents: [
+          { id: 11, policy_id: 10, intent_version: 1, validation_status: 'valid' },
+          { id, policy_id: 10, intent_version: 2, validation_status: 'valid' },
+        ],
+      });
+
+      expect(report.statusId).toBe(POLICY_ACTIVE_INTENT_INTEGRITY_STATUS_IDS.BLOCKED_UNSAFE_DUPLICATE);
+      expect(report.findings[0]).toMatchObject({
+        activeIntentCount: 2,
+        canonicalIntentId: null,
+        canonicalIntentVersion: null,
+        activeIntentIds: [11],
+        duplicateIntentIds: [11],
+      });
+    },
+  );
+
   test('blocks repair when a duplicate group has no validated candidate', () => {
     const report = buildPolicyActiveIntentIntegrityReport({
       activeIntents: [
