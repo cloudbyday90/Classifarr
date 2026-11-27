@@ -99,3 +99,9 @@ Expired rollback snapshots now retain only a minimal, digest-backed marker and
 their migration-event history. Active native authority, compatibility rows, and
 unexpired recovery payloads are untouched. A failed cleanup preserves the full
 snapshot because the redaction and audit event are committed atomically.
+
+Configuration restore carries a separate retention reference for verified
+library rebuild creation events. Fresh redaction can use that reference
+after the snapshot ID changes. Earlier redaction markers and event
+metadata record the IDs at the time of redaction.
+[Restore provenance outcome](rollback-snapshot-restore-provenance-outcome.md)

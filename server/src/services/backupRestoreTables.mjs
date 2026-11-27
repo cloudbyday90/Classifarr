@@ -3,6 +3,11 @@ import { classificationEvidenceRepository } from './classificationEvidenceReposi
 import { persistMetadataProviderConfig } from './metadataProviderConfigStore.mjs';
 import { ValidationError } from '../utils/appError.mjs';
 import { restoredReference, restoredArrReference } from './backupRestoreReferences.mjs';
+import {
+  getRestoredRebuildRetentionBinding,
+  indexRestoredRollbackSnapshots,
+  restoredRebuildCaptureMetadataSql,
+} from './policyRollbackSnapshotRebuildProvenance.mjs';
 export { restoreRadarrConfigs, restoreSonarrConfigs, restoreLabelPresets } from './backupRestoreDestinations.mjs';
 
 const LIBRARY_ALLOWED_COLUMNS = ['name', 'media_type', 'media_server_id', 'external_id', 'is_active',
@@ -386,6 +391,38 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     allowedColumns: POLICY_INTENT_TEMPLATE_APPLICATION_ALLOWED_COLUMNS,
   });
 
+  const rollbackSnapshotIdMap = new Map();
+  for (const snapshot of nativeStorage.policyIntentRollbackSnapshots || []) {
+    const newIntentId = intentIdMap.get(snapshot.intent_id);
+    const newPolicyId = policyIdMap.get(snapshot.policy_id);
+    if (!newIntentId || !newPolicyId) continue;
+
+    const { keys, values } = buildAllowedColumnValues(
+      snapshot,
+      POLICY_INTENT_ROLLBACK_SNAPSHOT_ALLOWED_COLUMNS,
+      POLICY_INTENT_ROLLBACK_SNAPSHOT_JSONB_COLUMNS
+    );
+    if (keys.length === 0) continue;
+
+    const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
+    const result = await client.query(
+      `INSERT INTO policy_intent_rollback_snapshots (intent_id, policy_id, ${keys.join(', ')})
+       VALUES ($1, $2, ${placeholders})
+       ON CONFLICT DO NOTHING
+       RETURNING id`,
+      [newIntentId, newPolicyId, ...values]
+    );
+    const restoredSnapshotId = result.rows[0]?.id ?? null;
+    if (restoredSnapshotId && snapshot.id != null) {
+      rollbackSnapshotIdMap.set(snapshot.id, restoredSnapshotId);
+    }
+    stats.rollbackSnapshotsRestored += 1;
+  }
+
+  const restoredRollbackSnapshots = indexRestoredRollbackSnapshots(
+    nativeStorage.policyIntentRollbackSnapshots, rollbackSnapshotIdMap,
+  );
+
   const migrationEventIdMap = new Map();
   const rollbackEventsByPolicyId = new Map();
   for (const event of nativeStorage.policyIntentMigrationEvents || []) {
@@ -400,10 +437,22 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     );
     if (keys.length === 0) continue;
 
-    const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
+    const binding = getRestoredRebuildRetentionBinding(event, restoredRollbackSnapshots);
+    if (binding !== undefined && !keys.includes('metadata')) {
+      keys.push('metadata');
+      values.push('{}');
+    }
+    const placeholders = keys.map((_, index) => `$${index + 3}`);
+    if (binding !== undefined) {
+      const metadataIndex = keys.indexOf('metadata');
+      values.push(JSON.stringify(binding));
+      placeholders[metadataIndex] = restoredRebuildCaptureMetadataSql(
+        placeholders[metadataIndex], `$${values.length + 2}`,
+      );
+    }
     const result = await client.query(
       `INSERT INTO policy_intent_migration_events (intent_id, policy_id, ${keys.join(', ')})
-       VALUES ($1, $2, ${placeholders})
+       VALUES ($1, $2, ${placeholders.join(', ')})
        ON CONFLICT DO NOTHING
        RETURNING id`,
       [newIntentId, newPolicyId, ...values]
@@ -462,34 +511,6 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
       [restoredPolicyId, sourceEventId],
     );
     stats.reconciliationHoldsRehydrated += 1;
-  }
-
-  const rollbackSnapshotIdMap = new Map();
-  for (const snapshot of nativeStorage.policyIntentRollbackSnapshots || []) {
-    const newIntentId = intentIdMap.get(snapshot.intent_id);
-    const newPolicyId = policyIdMap.get(snapshot.policy_id);
-    if (!newIntentId || !newPolicyId) continue;
-
-    const { keys, values } = buildAllowedColumnValues(
-      snapshot,
-      POLICY_INTENT_ROLLBACK_SNAPSHOT_ALLOWED_COLUMNS,
-      POLICY_INTENT_ROLLBACK_SNAPSHOT_JSONB_COLUMNS
-    );
-    if (keys.length === 0) continue;
-
-    const placeholders = keys.map((_, index) => `$${index + 3}`).join(', ');
-    const result = await client.query(
-      `INSERT INTO policy_intent_rollback_snapshots (intent_id, policy_id, ${keys.join(', ')})
-       VALUES ($1, $2, ${placeholders})
-       ON CONFLICT DO NOTHING
-       RETURNING id`,
-      [newIntentId, newPolicyId, ...values]
-    );
-    const restoredSnapshotId = result.rows[0]?.id ?? null;
-    if (restoredSnapshotId && snapshot.id != null) {
-      rollbackSnapshotIdMap.set(snapshot.id, restoredSnapshotId);
-    }
-    stats.rollbackSnapshotsRestored += 1;
   }
 
   stats.validationStatusesRestored = await insertNativeChildRows({
