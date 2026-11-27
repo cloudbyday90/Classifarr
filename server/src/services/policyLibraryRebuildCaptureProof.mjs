@@ -2,11 +2,12 @@
 
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
-/** A legacy large foreign key can be exact as stored but differ from the run capture selected. */
-export async function hasPolicyLibraryRebuildCaptureRunProof({ client, execution }) {
+/** A legacy large foreign key can differ from the identity selected at capture. */
+export async function hasPolicyLibraryRebuildCaptureProof({ client, execution }) {
+  const intentId = normalizeDatabaseBigintId(execution.intent_id);
   const verificationRunId = normalizeDatabaseBigintId(execution.verification_run_id);
-  if (verificationRunId === null) return false;
-  if (typeof verificationRunId === 'number') return true;
+  if (intentId === null || verificationRunId === null) return false;
+  if (typeof intentId === 'number' && typeof verificationRunId === 'number') return true;
 
   const migrationEventId = normalizeDatabaseBigintId(execution.migration_event_id);
   const snapshotId = normalizeDatabaseBigintId(execution.rollback_snapshot_id);
@@ -22,17 +23,19 @@ export async function hasPolicyLibraryRebuildCaptureRunProof({ client, execution
        AND reason_code = 'library_rebuild_snapshot_persisted'
        AND metadata -> 'snapshotId' = $4::jsonb
        AND metadata ->> 'transitionFingerprint' = $5
-       AND metadata -> 'verificationRunId' = to_jsonb($6::text)
+       AND metadata -> 'verificationRunId' = $6::jsonb
        AND metadata ->> 'verificationRunFingerprint' = $7
+       AND ($8::boolean OR metadata -> 'originalIntentId' = to_jsonb($3::bigint::text))
      FOR SHARE`,
     [
       migrationEventId,
       execution.policy_id,
-      execution.intent_id,
+      intentId,
       JSON.stringify(snapshotId),
       execution.transition_fingerprint,
-      verificationRunId,
+      JSON.stringify(verificationRunId),
       execution.verification_run_fingerprint,
+      typeof intentId === 'number',
     ],
   );
   return normalizeDatabaseBigintId(result.rows[0]?.id) === migrationEventId;

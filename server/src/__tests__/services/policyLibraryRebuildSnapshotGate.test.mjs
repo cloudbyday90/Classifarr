@@ -278,16 +278,17 @@ function createClient({
         if (failSnapshotInsert) {
           throw new Error('snapshot insert failed');
         }
-        return { rows: [{ id: 901 }], rowCount: 1 };
+        return { rows: [{ id: 901, intent_id: 101 }], rowCount: 1 };
       }
 
       if (statement.includes('INSERT INTO policy_intent_migration_events')) {
-        return { rows: [{ id: eventInsertId }], rowCount: 1 };
+        return { rows: [{ id: eventInsertId, intent_id: 101 }], rowCount: 1 };
       }
 
       if (statement.includes('RETURNING id, rollback_snapshot_id')) {
         return { rows: [{
           id: 801,
+          intent_id: 101,
           rollback_snapshot_id: 901,
           migration_event_id: 951,
           verification_run_id: persistedVerificationRun?.id,

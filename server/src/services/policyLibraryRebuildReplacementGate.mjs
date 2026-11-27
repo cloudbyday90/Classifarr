@@ -7,7 +7,7 @@
  */
 
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
-import { hasPolicyLibraryRebuildCaptureRunProof } from './policyLibraryRebuildCaptureRunProof.mjs';
+import { hasPolicyLibraryRebuildCaptureProof } from './policyLibraryRebuildCaptureProof.mjs';
 import { hasPolicyLibraryRebuildReplacementIntentProof } from './policyLibraryRebuildReplacementIntentProof.mjs';
 import {
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS,
@@ -157,7 +157,7 @@ function buildAppliedResult({
     execution: {
       gateId: normalizeDatabaseBigintId(execution.id),
       policyId: Number(execution.policy_id),
-      originalIntentId: Number(execution.intent_id),
+      originalIntentId: normalizeDatabaseBigintId(execution.intent_id),
       replacementIntentId: normalizeDatabaseBigintId(execution.replacement_intent_id),
       replacementEventId: normalizeDatabaseBigintId(execution.replacement_event_id),
       rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollback_snapshot_id),
@@ -219,7 +219,7 @@ function buildAppliedResult({
 function executionMatchesTransition(execution, transition) {
   const context = asObject(transition.policyContext);
   return Number(execution?.policy_id) === Number(context.policyId) &&
-    Number(execution?.intent_id) === Number(context.intentId) &&
+    normalizeDatabaseBigintId(execution?.intent_id) === context.intentId &&
     Number(execution?.library_id) === Number(context.libraryId) &&
     execution?.transition_fingerprint === transition?.transitionFingerprint?.fingerprint &&
     execution?.proposal_fingerprint === transition?.proposalFingerprint?.fingerprint &&
@@ -243,7 +243,7 @@ function validatePolicyLibraryRebuildReplacementGate(result = {}) {
       POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.ALREADY_APPLIED,
     ].includes(result.statusId) &&
     (normalizeDatabaseBigintId(execution.gateId) === null ||
-      !Number.isInteger(execution.originalIntentId) ||
+      normalizeDatabaseBigintId(execution.originalIntentId) === null ||
       normalizeDatabaseBigintId(execution.replacementIntentId) === null ||
       normalizeDatabaseBigintId(execution.replacementEventId) === null ||
       normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
@@ -439,17 +439,18 @@ async function applyPolicyLibraryRebuildReplacement({
         });
       }
 
-      if (!(await hasPolicyLibraryRebuildCaptureRunProof({ client, execution }))) {
+      if (!(await hasPolicyLibraryRebuildCaptureProof({ client, execution }))) {
         return buildBlockedResult({
           statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_VERIFICATION_RUN,
           now: executionTime,
           riskId: POLICY_LIBRARY_REBUILD_VERIFICATION_BINDING_RISK_IDS.VERIFICATION_RUN_EXECUTION_BINDING_MISMATCH,
-          message: 'Persisted rollback snapshot cannot prove its verification receipt binding.',
+          message: 'Persisted rollback snapshot cannot prove its original intent and verification receipt binding.',
         });
       }
 
       const currentIntent = await lockIntent(client, trustedTransition.policyContext);
-      if (!currentIntent || Number(currentIntent.id) !== Number(execution.intent_id)) {
+      const originalIntentId = trustedTransition.policyContext.intentId;
+      if (normalizeDatabaseBigintId(currentIntent?.id) !== originalIntentId) {
         return buildBlockedResult({
           statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
           now: executionTime,
@@ -466,7 +467,8 @@ async function applyPolicyLibraryRebuildReplacement({
         intentId: currentIntent.id,
         now: executionTime,
       });
-      if (!rollbackSnapshot || normalizeDatabaseBigintId(rollbackSnapshot.id) !== rollbackSnapshotId) {
+      if (!rollbackSnapshot || normalizeDatabaseBigintId(rollbackSnapshot.id) !== rollbackSnapshotId ||
+          normalizeDatabaseBigintId(rollbackSnapshot.intent_id) !== originalIntentId) {
         return buildBlockedResult({
           statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
           now: executionTime,

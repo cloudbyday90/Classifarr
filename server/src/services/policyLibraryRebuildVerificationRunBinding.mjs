@@ -94,7 +94,7 @@ function normalizeVerificationRun(row = {}) {
     id: normalizeDatabaseBigintId(source.id),
     runVersion: normalizePositiveInteger(source.run_version),
     policyId: normalizePositiveInteger(source.policy_id),
-    intentId: normalizePositiveInteger(source.intent_id),
+    intentId: normalizeDatabaseBigintId(source.intent_id),
     libraryId: normalizePositiveInteger(source.library_id),
     acceptanceTransitionFingerprint: normalizeString(
       source.acceptance_transition_fingerprint,
@@ -158,7 +158,7 @@ function validatePolicyLibraryRebuildVerificationRunBinding({
 
   if (
     run.policyId !== Number(context.policyId) ||
-    run.intentId !== Number(context.intentId) ||
+    run.intentId === null || run.intentId !== normalizeDatabaseBigintId(context.intentId) ||
     run.libraryId !== Number(context.libraryId) ||
     run.acceptanceTransitionFingerprint !== transition?.transitionFingerprint?.fingerprint
   ) {

@@ -65,6 +65,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   and evidence for exact BIGINT intent IDs in the policy engine's bulk read.
 - **Library rebuild replacement intents** — Keep generated intent IDs
   exact through dependent writes, replay, and removal readiness.
+- **Library rebuild original intents** — Preserve exact intent IDs
+  from acceptance through verification, capture, and removal readiness.
 
 ## [v0.49.5-beta] - 2026-11-24
 

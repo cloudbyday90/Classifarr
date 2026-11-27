@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+
 const POLICY_MIGRATION_VERIFICATION_COORDINATOR_VERSION =
   'policy.migration_verification_coordinator.v1';
 
@@ -93,7 +95,7 @@ function summarizePolicyContext(value = {}) {
 
   return {
     policyId: normalizePositiveInteger(policyContext.policyId ?? policyContext.policy_id),
-    intentId: normalizePositiveInteger(policyContext.intentId ?? policyContext.intent_id),
+    intentId: normalizeDatabaseBigintId(policyContext.intentId ?? policyContext.intent_id),
     libraryId: normalizePositiveInteger(policyContext.libraryId ?? policyContext.library_id),
   };
 }

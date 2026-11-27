@@ -103,7 +103,7 @@ function summarizeExecutionGate(value = {}) {
   return {
     gateId: normalizeDatabaseBigintId(gate.id),
     policyId: normalizePositiveInteger(gate.policy_id ?? gate.policyId),
-    originalIntentId: normalizePositiveInteger(gate.intent_id ?? gate.intentId),
+    originalIntentId: normalizeDatabaseBigintId(gate.intent_id ?? gate.intentId),
     libraryId: normalizePositiveInteger(gate.library_id ?? gate.libraryId),
     stateId: normalizeString(gate.state),
     replacementIntentId: normalizeDatabaseBigintId(
@@ -139,7 +139,7 @@ function summarizeVerificationReceipt(value = {}) {
   return {
     verificationRunId: normalizeDatabaseBigintId(receipt.id),
     policyId: normalizePositiveInteger(receipt.policy_id ?? receipt.policyId),
-    originalIntentId: normalizePositiveInteger(receipt.intent_id ?? receipt.intentId),
+    originalIntentId: normalizeDatabaseBigintId(receipt.intent_id ?? receipt.intentId),
     libraryId: normalizePositiveInteger(receipt.library_id ?? receipt.libraryId),
     transitionFingerprint: normalizeFingerprint(
       receipt.acceptance_transition_fingerprint ?? receipt.acceptanceTransitionFingerprint,
@@ -184,7 +184,7 @@ function summarizeRollbackSnapshot(value = {}) {
   return {
     rollbackSnapshotId: normalizeDatabaseBigintId(snapshot.id),
     policyId: normalizePositiveInteger(snapshot.policy_id ?? snapshot.policyId),
-    originalIntentId: normalizePositiveInteger(snapshot.intent_id ?? snapshot.intentId),
+    originalIntentId: normalizeDatabaseBigintId(snapshot.intent_id ?? snapshot.intentId),
     payloadRedacted: (snapshot.payload_redacted ?? snapshot.payloadRedacted) === true,
     expiresAt: normalizeIsoDate(snapshot.expires_at ?? snapshot.expiresAt),
     restoredAt: normalizeIsoDate(snapshot.restored_at ?? snapshot.restoredAt),
@@ -205,6 +205,9 @@ function summarizeReplacementEvent(value = {}) {
     replacementEventId: normalizeDatabaseBigintId(event.id),
     policyId: normalizePositiveInteger(event.policy_id ?? event.policyId),
     replacementIntentId: normalizeDatabaseBigintId(event.intent_id ?? event.intentId),
+    originalIntentReference: normalizeEventReference(
+      event.original_intent_reference, event.original_intent_reference_json_type,
+    ),
     replacementIntentReference: normalizeEventReference(
       event.replacement_intent_reference, event.replacement_intent_reference_json_type,
     ),
@@ -373,6 +376,8 @@ function buildPolicyLibraryRebuildLegacyDeletionReadiness({
   } else if (event.replacementEventId !== execution.replacementEventId ||
       event.policyId !== execution.policyId ||
       event.replacementIntentId !== execution.replacementIntentId ||
+      (typeof execution.originalIntentId === 'string' &&
+        event.originalIntentReference !== execution.originalIntentId) ||
       (typeof execution.replacementIntentId === 'string' &&
         event.replacementIntentReference !== execution.replacementIntentId) ||
       event.eventType !== 'library_rebuild_replacement_applied' ||
@@ -531,6 +536,7 @@ function validatePolicyLibraryRebuildLegacyDeletionReadiness(readiness = {}) {
 
   if (ready && (normalizeDatabaseBigintId(result.cutover?.gateId) === null ||
       normalizeDatabaseBigintId(result.cutover?.replacementEventId) === null ||
+      normalizeDatabaseBigintId(result.cutover?.originalIntentId) === null ||
       normalizeDatabaseBigintId(result.cutover?.replacementIntentId) === null ||
       normalizeDatabaseBigintId(result.verification?.verificationRunId) === null ||
       normalizeDatabaseBigintId(result.rollback?.rollbackSnapshotId) === null ||

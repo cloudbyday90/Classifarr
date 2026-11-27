@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+
 const POLICY_LIBRARY_REBUILD_EXECUTION_STATE_IDS = Object.freeze({
   SNAPSHOT_PERSISTING: 'snapshot_persisting',
   SNAPSHOT_PERSISTED: 'snapshot_persisted',
@@ -287,7 +289,7 @@ async function createRollbackSnapshot({
        expires_at
      )
      VALUES ($1, $2, $3, $4::jsonb, FALSE, $5, $6)
-     RETURNING id`,
+     RETURNING id, intent_id`,
     [
       intent.id,
       policy.id,
@@ -298,7 +300,7 @@ async function createRollbackSnapshot({
     ]
   );
 
-  return getFirstRow(result)?.id ?? null;
+  return getFirstRow(result);
 }
 
 async function createMigrationEvent({ client, intent, transition, snapshotId, verificationRun }) {
@@ -316,7 +318,7 @@ async function createMigrationEvent({ client, intent, transition, snapshotId, ve
        metadata
      )
      VALUES ($1, $2, 'rollback_snapshot_created', 'operator', NULL, $3, $3, $4, $5, $6::jsonb)
-     RETURNING id`,
+     RETURNING id, intent_id`,
     [
       intent.id,
       transition.policyContext.policyId,
@@ -329,6 +331,7 @@ async function createMigrationEvent({ client, intent, transition, snapshotId, ve
         rollbackPlanFingerprint: transition.rollbackPlanFingerprint.fingerprint,
         idempotencyKey: transition.replayProtection.idempotencyKey,
         snapshotId,
+        originalIntentId: normalizeDatabaseBigintId(intent.id),
         verificationRunId: verificationRun.id,
         verificationRunFingerprint: verificationRun.verifierFingerprint,
         actorSourceId: transition.acceptance.actorSourceId,
@@ -337,7 +340,7 @@ async function createMigrationEvent({ client, intent, transition, snapshotId, ve
     ]
   );
 
-  return getFirstRow(result)?.id ?? null;
+  return getFirstRow(result);
 }
 
 async function markExecutionSnapshotPersisted({ client, gateId, snapshotId, eventId, now }) {
@@ -349,7 +352,7 @@ async function markExecutionSnapshotPersisted({ client, gateId, snapshotId, even
          updated_at = $5
      WHERE id = $1
        AND state = $6
-     RETURNING id, rollback_snapshot_id, migration_event_id, verification_run_id, verification_run_fingerprint`,
+     RETURNING id, rollback_snapshot_id, migration_event_id, verification_run_id, verification_run_fingerprint, intent_id`,
     [
       gateId,
       POLICY_LIBRARY_REBUILD_EXECUTION_STATE_IDS.SNAPSHOT_PERSISTED,

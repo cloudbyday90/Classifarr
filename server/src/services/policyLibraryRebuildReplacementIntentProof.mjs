@@ -5,8 +5,9 @@ import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 export async function hasPolicyLibraryRebuildReplacementIntentProof({ client, execution }) {
   const eventId = normalizeDatabaseBigintId(execution.replacement_event_id);
   const intentId = normalizeDatabaseBigintId(execution.replacement_intent_id);
-  if (eventId === null || intentId === null) return false;
-  if (typeof intentId === 'number') return true;
+  const originalIntentId = normalizeDatabaseBigintId(execution.intent_id);
+  if (eventId === null || intentId === null || originalIntentId === null) return false;
+  if (typeof intentId === 'number' && typeof originalIntentId === 'number') return true;
 
   // The original intent's successor pointer can be cleared by reversion.
   const result = await client.query(
@@ -21,7 +22,8 @@ export async function hasPolicyLibraryRebuildReplacementIntentProof({ client, ex
        AND event.event_type = 'library_rebuild_replacement_applied'
        AND event.metadata -> 'executionGateId' = $5::jsonb
        AND event.metadata ->> 'transitionFingerprint' = $6
-       AND event.metadata -> 'replacementIntentId' = to_jsonb($3::bigint::text)
+       AND event.metadata -> 'replacementIntentId' = $7::jsonb
+       AND ($8::boolean OR event.metadata -> 'originalIntentId' = $9::jsonb)
      FOR SHARE OF event, intent`,
     [
       eventId,
@@ -30,6 +32,9 @@ export async function hasPolicyLibraryRebuildReplacementIntentProof({ client, ex
       execution.library_id,
       JSON.stringify(normalizeDatabaseBigintId(execution.id)),
       execution.transition_fingerprint,
+      JSON.stringify(intentId),
+      typeof originalIntentId === 'number',
+      JSON.stringify(originalIntentId),
     ],
   );
   return normalizeDatabaseBigintId(result.rows[0]?.id) === eventId;

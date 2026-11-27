@@ -119,7 +119,7 @@ function summarizeCoordinator(coordinatorResult = {}) {
     evaluatedAt: normalizeIsoDate(coordinator.evaluatedAt),
     policyContext: {
       policyId: normalizePositiveInteger(policyContext.policyId),
-      intentId: normalizePositiveInteger(policyContext.intentId),
+      intentId: normalizeDatabaseBigintId(policyContext.intentId),
       libraryId: normalizePositiveInteger(policyContext.libraryId),
     },
     acceptanceTransitionFingerprint: normalizeString(
@@ -161,7 +161,7 @@ function summarizeVerificationRun(value = {}) {
     id: normalizeDatabaseBigintId(run.id),
     runVersion: normalizePositiveInteger(run.runVersion ?? run.run_version),
     policyId: normalizePositiveInteger(run.policyId ?? run.policy_id),
-    intentId: normalizePositiveInteger(run.intentId ?? run.intent_id),
+    intentId: normalizeDatabaseBigintId(run.intentId ?? run.intent_id),
     libraryId: normalizePositiveInteger(run.libraryId ?? run.library_id),
     acceptanceTransitionFingerprint: normalizeString(
       run.acceptanceTransitionFingerprint ?? run.acceptance_transition_fingerprint,
@@ -383,6 +383,8 @@ function validatePolicyMigrationVerificationRunResult(result = {}) {
   }
 
   if (requiresReceipt && (normalizeDatabaseBigintId(verificationRun?.id) === null ||
+      normalizeDatabaseBigintId(verificationRun?.intentId) === null ||
+      verificationRun.intentId !== handoff.coordinator?.policyContext?.intentId ||
       !SHA256_FINGERPRINT_PATTERN.test(normalizeString(
         asObject(verificationRun).acceptanceTransitionFingerprint,
         64,

@@ -1,3 +1,4 @@
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_CONVERSION_ACTOR_SOURCE_IDS,
 } from './policyConversionActorSources.mjs';
@@ -302,7 +303,7 @@ function buildPolicyRollbackSnapshotWindow({
 } = {}) {
   const nowIso = toIsoDate(now);
   const policyId = policy.id ?? policy.policy_id ?? snapshot.policyId ?? snapshot.policy_id ?? null;
-  const intentId = policy.intent_id ?? policy.intentId ?? snapshot.intentId ?? snapshot.intent_id ?? null;
+  const intentId = normalizeDatabaseBigintId(policy.intent_id ?? policy.intentId ?? snapshot.intentId ?? snapshot.intent_id);
   const snapshotVersion = toInteger(targetVersion, 1);
   const boundedWindowDays = boundWindowDays(rollbackWindowDays);
   const expiresAt = snapshot.expiresAt || snapshot.expires_at || addDays(nowIso, boundedWindowDays);
@@ -444,7 +445,8 @@ function validatePolicyRollbackSnapshotWindow(windowPlan = {}) {
     });
   }
 
-  if (windowPlan.intentId === null || windowPlan.intentId === undefined) {
+  const intentId = normalizeDatabaseBigintId(windowPlan.intentId);
+  if (intentId === null || normalizeDatabaseBigintId(windowPlan.snapshot?.intentId) !== intentId) {
     issues.push({
       riskId: POLICY_ROLLBACK_AUDIT_RISK_IDS.MISSING_INTENT_ID,
       message: 'Rollback snapshot window must bind to the native intent id or planned intent id.',

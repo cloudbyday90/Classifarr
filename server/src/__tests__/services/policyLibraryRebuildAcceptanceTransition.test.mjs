@@ -135,6 +135,40 @@ function acceptedTransition(overrides = {}) {
 }
 
 describe('policyLibraryRebuildAcceptanceTransition', () => {
+  test('distinguishes adjacent large originals and rejects unsafe numeric originals', () => {
+    const rebuildProposal = proposal();
+    const plan = rollbackWindowPlan();
+    const makeTransition = intentId => acceptedTransition({
+      proposal: rebuildProposal,
+      policyContext: { ...policyContext(), intentId },
+      rollbackWindowPlan: { ...plan, intentId, snapshot: { ...plan.snapshot, intentId } },
+    });
+    const lower = '9007199254740992';
+    const upper = '9007199254740993';
+    const lowerTransition = makeTransition(lower);
+    const upperTransition = makeTransition(upper);
+    expect(lowerTransition).toMatchObject({ policyContext: { intentId: lower }, validation: { ok: true } });
+    expect(upperTransition).toMatchObject({ policyContext: { intentId: upper }, validation: { ok: true } });
+    expect(upperTransition.transitionFingerprint.fingerprint).not.toBe(lowerTransition.transitionFingerprint.fingerprint);
+    expect(makeTransition(Number(upper)).validation.ok).toBe(false);
+    expect(validatePolicyLibraryRebuildAcceptanceTransition({
+      transition: { ...upperTransition, policyContext: { ...policyContext(), intentId: Number(upper) } },
+      proposal: rebuildProposal,
+      now: NOW,
+    }).ok).toBe(false);
+  });
+
+  test('keeps a legacy safe nested string in the accepted fingerprint payload', () => {
+    const plan = rollbackWindowPlan();
+    const legacyPlan = { ...plan, snapshot: { ...plan.snapshot, intentId: '101' } };
+    const accepted = acceptedTransition({ rollbackWindowPlan: legacyPlan });
+    expect(accepted).toMatchObject({
+      validation: { ok: true }, policyContext: { intentId: 101 }, rollbackWindowPlan: legacyPlan,
+    });
+    expect(accepted.rollbackPlanFingerprint.fingerprint)
+      .not.toBe(acceptedTransition().rollbackPlanFingerprint.fingerprint);
+  });
+
   test('binds a current operator acceptance to the complete rebuild proposal and rollback plan', () => {
     const rebuildProposal = proposal();
     const transition = acceptedTransition({ proposal: rebuildProposal });

@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS,
   validatePolicyLibraryRebuildAcceptanceTransition,
@@ -53,7 +54,7 @@ function policyContextFromAcceptanceTransition(acceptanceTransition = {}) {
 
   return {
     policyId: normalizePositiveInteger(policyContext.policyId ?? policyContext.policy_id),
-    intentId: normalizePositiveInteger(policyContext.intentId ?? policyContext.intent_id),
+    intentId: normalizeDatabaseBigintId(policyContext.intentId ?? policyContext.intent_id),
     libraryId: normalizePositiveInteger(policyContext.libraryId ?? policyContext.library_id),
   };
 }

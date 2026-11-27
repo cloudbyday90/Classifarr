@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 
 import {
   POLICY_CONVERSION_ACTOR_SOURCE_IDS,
@@ -247,14 +248,14 @@ function normalizePolicyContext(value = {}) {
 
   return {
     policyId: normalizePositiveInteger(context.policyId ?? context.policy_id),
-    intentId: normalizePositiveInteger(context.intentId ?? context.intent_id),
+    intentId: normalizeDatabaseBigintId(context.intentId ?? context.intent_id),
     libraryId: normalizePositiveInteger(context.libraryId ?? context.library_id),
   };
 }
 
 function policyContextIsComplete(context = {}) {
   return Number.isInteger(context.policyId) &&
-    Number.isInteger(context.intentId) &&
+    normalizeDatabaseBigintId(context.intentId) !== null &&
     Number.isInteger(context.libraryId);
 }
 
@@ -384,9 +385,9 @@ function rollbackPlanIssues(rollbackWindowPlan, policyContext, now) {
   }
 
   if (rollbackWindowPlan.policyId !== policyContext.policyId ||
-      rollbackWindowPlan.intentId !== policyContext.intentId ||
+      normalizeDatabaseBigintId(rollbackWindowPlan.intentId) !== policyContext.intentId ||
       normalizePositiveInteger(rollbackWindowPlan.snapshot?.policyId) !== policyContext.policyId ||
-      normalizePositiveInteger(rollbackWindowPlan.snapshot?.intentId) !== policyContext.intentId) {
+      normalizeDatabaseBigintId(rollbackWindowPlan.snapshot?.intentId) !== policyContext.intentId) {
     issues.push(POLICY_LIBRARY_REBUILD_ACCEPTANCE_AUDIT_RISK_IDS.ROLLBACK_PLAN_CONTEXT_MISMATCH);
   }
 
@@ -594,6 +595,14 @@ function validatePolicyLibraryRebuildAcceptanceTransition({
   const proposalValidation = validatePolicyLibraryPolicyRebuildProposal(proposal);
   const proposalIssues = proposalReviewabilityIssues(proposal, normalizedPolicyContext);
   const rollbackIssues = rollbackPlanIssues(rollbackWindowPlan, normalizedPolicyContext, evaluationTime);
+
+  if (normalizedPolicyContext.intentId !== null &&
+      normalizedTransition.policyContext?.intentId !== normalizedPolicyContext.intentId) {
+    issues.push({
+      riskId: POLICY_LIBRARY_REBUILD_ACCEPTANCE_AUDIT_RISK_IDS.MISSING_POLICY_CONTEXT,
+      message: 'Library rebuild acceptance must carry a canonical original intent identifier.',
+    });
+  }
 
   if (normalizedTransition.version !== POLICY_LIBRARY_REBUILD_ACCEPTANCE_TRANSITION_VERSION) {
     issues.push({

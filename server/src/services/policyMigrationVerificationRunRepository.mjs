@@ -44,7 +44,7 @@ function normalizeVerificationRunRow(row = {}) {
     id: normalizeDatabaseBigintId(source.id),
     runVersion: normalizePositiveInteger(source.run_version ?? source.runVersion),
     policyId: normalizePositiveInteger(source.policy_id ?? source.policyId),
-    intentId: normalizePositiveInteger(source.intent_id ?? source.intentId),
+    intentId: normalizeDatabaseBigintId(source.intent_id ?? source.intentId),
     libraryId: normalizePositiveInteger(source.library_id ?? source.libraryId),
     acceptanceTransitionFingerprint: normalizeString(
       source.acceptance_transition_fingerprint ?? source.acceptanceTransitionFingerprint,
@@ -225,6 +225,9 @@ async function insertPolicyMigrationVerificationRun({ client, record }) {
   const run = normalizeVerificationRunRow(row);
   if (row && run.id === null) {
     throw new Error('Migration verification-run insert did not return a valid identifier.');
+  }
+  if (row && run.intentId !== record.intentId) {
+    throw new Error('Migration verification-run insert did not confirm the original intent.');
   }
   return run;
 }

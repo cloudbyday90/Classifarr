@@ -19,13 +19,13 @@ export function buildLibraryRebuildRemovalInventoryFixture() {
   });
 }
 
-function buildInputs({ policyId, intentId, libraryId, now }) {
+function buildInputs({ policyId, intentId, libraryId, libraryName, now }) {
   const action = {
     actorSourceId: 'manual_operator', actorId: 'admin:1', reasonCode: 'library_rebuild',
     reason: 'Operator accepted a library rebuild proposal.',
   };
   const proposal = buildPolicyLibraryPolicyRebuildProposalFromRuntimeInput({
-    library: { libraryId, libraryName: 'Animated Movies', mediaType: 'movie' },
+    library: { libraryId, libraryName, mediaType: 'movie' },
     profileHandoff: {
       version: 'policy.library_profile_evidence_loader.v1', ok: true, statusId: 'ready', libraryId,
       profileEvidence: {
@@ -96,8 +96,9 @@ export function createLibraryRebuildIdentityFixture(db) {
     captureEventId: requestedCaptureEventId = null,
     seedVerification = true,
   } = {}) {
+    const libraryName = `Rebuild ${tag}`;
     const { policyId, libraryId, mediaServerId } = await createPolicyEngineIntegrationFixture(db, {
-      libraryName: `Rebuild ${tag}`, policyName: `Rebuild ${tag}`,
+      libraryName, policyName: libraryName,
     });
     const intent = await db.query(`WITH header AS (
       INSERT INTO policy_intents (policy_id, library_id, source, inference_state, validation_status)
@@ -115,7 +116,7 @@ export function createLibraryRebuildIdentityFixture(db) {
       (library_id, arr_type, arr_config_id, arr_root_folder_id, arr_root_folder_path, quality_profile_id)
       VALUES ($1, 'radarr', $2, 67, '/synthetic/animation', 87)`, [libraryId, arr.rows[0].id]);
     const now = new Date();
-    const { proposal, transition } = buildInputs({ policyId, intentId, libraryId, now });
+    const { proposal, transition } = buildInputs({ policyId, intentId, libraryId, libraryName, now });
     if (seedVerification) {
       await seedVerificationReceipt(db, { policyId, intentId, libraryId, transition, now });
     }
@@ -137,5 +138,5 @@ export function createLibraryRebuildIdentityFixture(db) {
     return { policyId, now };
   }
 
-  return { fixture, setNextMigrationEventId, closeRollbackWindow };
+  return { fixture, setNextMigrationEventId, closeRollbackWindow, seedVerification: input => seedVerificationReceipt(db, input) };
 }
