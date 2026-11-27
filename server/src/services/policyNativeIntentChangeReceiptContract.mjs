@@ -15,6 +15,8 @@ export const POLICY_NATIVE_INTENT_CHANGE_RECEIPT_TABLE =
   'policy_native_intent_change_receipts';
 export const POLICY_NATIVE_INTENT_CHANGE_RECEIPT_VERSION = 1;
 export const POLICY_NATIVE_INTENT_CHANGE_RECEIPT_RESULT_STATUS_ID = 'applied';
+export const POLICY_NATIVE_INTENT_CHANGE_RECEIPT_BINDING_DOMAIN =
+  'policy.native_intent_change_receipt_binding.v1';
 
 const ALLOWED_COMMAND_IDS = new Set([
   'update_purpose',
@@ -165,7 +167,7 @@ export function buildPolicyNativeIntentChangeReceiptBindingDigest({
 }) {
   return createHash('sha256')
     .update(stableJson({
-      domain: 'policy.native_intent_change_receipt_binding.v1',
+      domain: POLICY_NATIVE_INTENT_CHANGE_RECEIPT_BINDING_DOMAIN,
       idempotencyKey,
       commandFingerprint,
       targetIntentId,

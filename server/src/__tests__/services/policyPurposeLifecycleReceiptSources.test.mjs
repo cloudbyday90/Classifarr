@@ -30,8 +30,9 @@ describe('policyPurposeLifecycleReceiptSources', () => {
     expect(sql).toContain('active_native_policies active')
     expect(sql).not.toContain('LIMIT $1')
     expect(sql).not.toContain('rule.values')
-    expect(sql).not.toContain('actor_id')
-    expect(sql).not.toContain('metadata')
+    expect(sql).toContain("event.metadata -> 'receiptBindingDigest'")
+    const projections = sql.match(/SELECT[\s\S]*?\bFROM\b/g)
+    expect(projections.join('\n')).not.toMatch(/actor_id|metadata|idempotency_key|command_fingerprint/)
     expect(sql).not.toContain('library.name')
     expect(sql).not.toContain('policy.name')
   })
@@ -43,6 +44,9 @@ describe('policyPurposeLifecycleReceiptSources', () => {
 
     expect(sql.match(/LIMIT \$1/g)).toHaveLength(3)
     expect(sql).not.toContain('active_native_policies active')
+    const changeSource = sql.slice(sql.indexOf('change_lifecycle_receipts AS'),
+      sql.indexOf('library_rebuild_replacement_lifecycle_receipts AS'))
+    expect(changeSource).toMatch(/receiptBindingDigest[\s\S]*ORDER BY[\s\S]*LIMIT \$1/)
   })
 
   test('rejects a caller-selected SQL scope', () => {

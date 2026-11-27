@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { NATIVE_INTENT_CHANGE_LIFECYCLE_PROOF_SQL } from './policyNativeIntentChangeReceiptBindingSql.mjs';
+
 export const POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS = Object.freeze({
   INITIAL_INTENT_ESTABLISHMENT: 'initial_intent_establishment',
   NATIVE_INTENT_CHANGE: 'native_intent_change',
@@ -80,6 +82,7 @@ export function buildPolicyPurposeLifecycleReceiptSourceCtesSql({ scope } = {}) 
        FROM policy_native_intent_change_receipts change_receipt
        ${changeScopeJoin}
        WHERE change_receipt.result_status_id = 'applied'
+         AND ${NATIVE_INTENT_CHANGE_LIFECYCLE_PROOF_SQL}
        ${recentWindowSql(normalizedScope, 'change_receipt.created_at', 'change_receipt.id')}
      ),
      library_rebuild_replacement_lifecycle_receipts AS (

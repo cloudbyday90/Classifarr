@@ -35,6 +35,6 @@ test('reads only verified lifecycle receipt aggregates', async () => {
   expect(sql).not.toContain('policy.name');
   expect(sql).not.toContain('library.name');
   expect(sql).not.toContain('rule.values');
-  expect(sql).not.toContain('metadata');
-  expect(sql).not.toContain('actor_id');
+  const projection = sql.slice(sql.lastIndexOf('SELECT'));
+  expect(projection).not.toMatch(/actor_id|metadata|idempotency_key|command_fingerprint/);
 });

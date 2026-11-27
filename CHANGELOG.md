@@ -78,6 +78,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   and migration event IDs, and require stored evidence to replay large links.
 - **Active-intent integrity report** — Preserve exact BIGINT intent IDs in
   duplicate findings and block repair candidates when identity evidence is incomplete.
+- **Policy-purpose lifecycle reports** — Require saved attempt proof before
+  counting native changes with large intent or migration event IDs.
 
 ## [v0.49.5-beta] - 2026-11-24
 

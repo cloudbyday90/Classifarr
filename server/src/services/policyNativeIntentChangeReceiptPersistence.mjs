@@ -13,6 +13,7 @@ import {
   normalizePolicyNativeIntentChangeReceiptRow,
   POLICY_NATIVE_INTENT_CHANGE_RECEIPT_TABLE,
 } from './policyNativeIntentChangeReceiptContract.mjs';
+import { NATIVE_INTENT_CHANGE_REPLAY_BINDING_SQL } from './policyNativeIntentChangeReceiptBindingSql.mjs';
 
 function firstRow(result) {
   return Array.isArray(result?.rows) ? result.rows[0] || null : null;
@@ -61,17 +62,7 @@ export async function hasPolicyNativeIntentChangeReceiptBinding({ client, receip
     `SELECT event.id
      FROM policy_intent_migration_events event
      JOIN policy_intents intent ON intent.id = event.intent_id
-     WHERE event.id = $1
-       AND intent.id = $2
-       AND event.policy_id = $3
-       AND intent.policy_id = $3
-       AND event.event_type = 'native_intent_change_applied'
-       AND event.actor_type = 'operator'
-       AND event.actor_id = $4
-       AND event.source_version = $5
-       AND event.target_version = $6
-       AND intent.intent_version = $6
-       AND event.metadata -> 'receiptBindingDigest' = to_jsonb($7::text)`,
+     WHERE ${NATIVE_INTENT_CHANGE_REPLAY_BINDING_SQL}`,
     [
       receipt.migrationEventId,
       receipt.targetIntentId,
