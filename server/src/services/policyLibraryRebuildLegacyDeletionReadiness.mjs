@@ -101,7 +101,7 @@ function summarizeExecutionGate(value = {}) {
   const gate = asObject(value);
 
   return {
-    gateId: normalizePositiveInteger(gate.id),
+    gateId: normalizeDatabaseBigintId(gate.id),
     policyId: normalizePositiveInteger(gate.policy_id ?? gate.policyId),
     originalIntentId: normalizePositiveInteger(gate.intent_id ?? gate.intentId),
     libraryId: normalizePositiveInteger(gate.library_id ?? gate.libraryId),
@@ -191,21 +191,27 @@ function summarizeRollbackSnapshot(value = {}) {
   };
 }
 
+function normalizeEventReference(value, jsonType) {
+  const id = normalizeDatabaseBigintId(value);
+  // SQL reports both text and type so numeric JSON can only attest safe IDs.
+  return jsonType === undefined || jsonType === 'string' ||
+    (jsonType === 'number' && typeof id === 'number') ? id : null;
+}
+
 function summarizeReplacementEvent(value = {}) {
   const event = asObject(value);
-  const snapshotId = normalizeDatabaseBigintId(event.rollback_snapshot_id ?? event.rollbackSnapshotId);
-  const snapshotJsonType = event.rollback_snapshot_id_json_type;
-  // SQL reports both text and type so numeric JSON can only attest safe IDs.
-  const exactSnapshotId = snapshotJsonType === undefined || snapshotJsonType === 'string' ||
-    (snapshotJsonType === 'number' && typeof snapshotId === 'number') ? snapshotId : null;
 
   return {
     replacementEventId: normalizePositiveInteger(event.id),
     policyId: normalizePositiveInteger(event.policy_id ?? event.policyId),
     replacementIntentId: normalizePositiveInteger(event.intent_id ?? event.intentId),
     eventType: normalizeString(event.event_type ?? event.eventType),
-    executionGateId: normalizePositiveInteger(event.execution_gate_id ?? event.executionGateId),
-    rollbackSnapshotId: exactSnapshotId,
+    executionGateId: normalizeEventReference(
+      event.execution_gate_id ?? event.executionGateId, event.execution_gate_id_json_type,
+    ),
+    rollbackSnapshotId: normalizeEventReference(
+      event.rollback_snapshot_id ?? event.rollbackSnapshotId, event.rollback_snapshot_id_json_type,
+    ),
     verificationRunId: normalizePositiveInteger(event.verification_run_id ?? event.verificationRunId),
     transitionFingerprint: normalizeFingerprint(
       event.transition_fingerprint ?? event.transitionFingerprint,
@@ -519,7 +525,8 @@ function validatePolicyLibraryRebuildLegacyDeletionReadiness(readiness = {}) {
     });
   }
 
-  if (ready && (!result.cutover?.gateId || !result.verification?.verificationRunId ||
+  if (ready && (normalizeDatabaseBigintId(result.cutover?.gateId) === null ||
+      !result.verification?.verificationRunId ||
       normalizeDatabaseBigintId(result.rollback?.rollbackSnapshotId) === null ||
       result.rollback?.dispositionId !== POLICY_LIBRARY_REBUILD_LEGACY_DELETION_READINESS_DISPOSITION_IDS
         .WINDOW_CLOSED_PAYLOAD_REDACTED ||

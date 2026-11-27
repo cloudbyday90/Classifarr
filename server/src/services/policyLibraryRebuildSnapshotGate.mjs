@@ -156,7 +156,7 @@ function buildPersistedResult({
     statusId,
     evaluatedAt: now.toISOString(),
     execution: {
-      gateId: Number(execution.id),
+      gateId: normalizeDatabaseBigintId(execution.id),
       policyId: Number(execution.policy_id),
       intentId: Number(execution.intent_id),
       libraryId: Number(execution.library_id),
@@ -246,7 +246,8 @@ function validatePolicyLibraryRebuildSnapshotGate(result = {}) {
       POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.ALREADY_PERSISTED,
     ].includes(result.statusId)
   ) {
-    if (!hasFingerprint(execution.transitionFingerprint) ||
+    if (normalizeDatabaseBigintId(execution.gateId) === null ||
+        !hasFingerprint(execution.transitionFingerprint) ||
         !hasFingerprint(execution.proposalFingerprint) ||
         !hasFingerprint(execution.rollbackPlanFingerprint) ||
         !Number.isInteger(execution.verificationRunId) ||
@@ -273,6 +274,7 @@ function buildPolicyLibraryRebuildSnapshotGateAudit(result = null) {
     version: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_VERSION,
     statusId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.ROLLBACK_SNAPSHOT_PERSISTED,
     execution: {
+      gateId: 1,
       transitionFingerprint: 'a'.repeat(64),
       proposalFingerprint: 'b'.repeat(64),
       rollbackPlanFingerprint: 'c'.repeat(64),

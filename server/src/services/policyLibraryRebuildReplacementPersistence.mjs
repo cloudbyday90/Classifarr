@@ -304,7 +304,7 @@ async function insertReplacementMigrationEvent({
       'library_rebuild_replacement_applied',
       'Accepted library rebuild replacement applied from persisted rollback and verification evidence.',
       JSON.stringify({
-        executionGateId: Number(execution.id),
+        executionGateId: normalizeDatabaseBigintId(execution.id),
         transitionFingerprint: execution.transition_fingerprint,
         proposalFingerprint: execution.proposal_fingerprint,
         rollbackPlanFingerprint: execution.rollback_plan_fingerprint,

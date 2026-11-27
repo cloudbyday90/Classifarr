@@ -50,6 +50,9 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 - **Library rebuild rollback evidence** — Carry exact snapshot IDs through
   cutover and removal readiness, and refuse ambiguous historical
   numeric audit references.
+- **Library rebuild execution evidence** — Preserve exact gate IDs through
+  replacement and removal readiness, and verify the gate acknowledgement
+  before replacement commits.
 
 ## [v0.49.5-beta] - 2026-11-24
 

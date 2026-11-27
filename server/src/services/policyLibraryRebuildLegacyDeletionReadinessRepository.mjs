@@ -123,6 +123,7 @@ async function lockReplacementEvent({ client, replacementEventId, policyId }) {
        intent_id,
        event_type,
        metadata ->> 'executionGateId' AS execution_gate_id,
+       jsonb_typeof(metadata -> 'executionGateId') AS execution_gate_id_json_type,
        metadata ->> 'rollbackSnapshotId' AS rollback_snapshot_id,
        jsonb_typeof(metadata -> 'rollbackSnapshotId') AS rollback_snapshot_id_json_type,
        metadata ->> 'verificationRunId' AS verification_run_id,

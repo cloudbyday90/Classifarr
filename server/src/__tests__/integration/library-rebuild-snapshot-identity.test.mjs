@@ -103,7 +103,7 @@ async function seedVerificationReceipt({ policyId, intentId, libraryId, transiti
     `policy:migration_verification:${verificationKey}`, now.toISOString()]);
 }
 
-async function fixture(tag, snapshotId) {
+async function fixture(tag, snapshotId, gateId) {
   const { policyId, libraryId, mediaServerId } = await createPolicyEngineIntegrationFixture(db, {
     libraryName: `Rebuild ${tag}`, policyName: `Rebuild ${tag}`,
   });
@@ -126,11 +126,16 @@ async function fixture(tag, snapshotId) {
   const { proposal, transition } = buildInputs({ policyId, intentId, libraryId, now });
   await seedVerificationReceipt({ policyId, intentId, libraryId, transition, now });
   // Each case owns its sequence range in this disposable suite database.
-  await db.query("SELECT setval(pg_get_serial_sequence('policy_intent_rollback_snapshots', 'id'), $1::bigint, false)", [snapshotId]);
-  return { policyId, intentId, args: { dbClient: db, proposal, transition, now } };
+  for (const [table, id] of [
+    ['policy_intent_rollback_snapshots', snapshotId],
+    ['policy_library_rebuild_execution_gates', gateId],
+  ]) {
+    await db.query("SELECT setval(pg_get_serial_sequence($1, 'id'), $2::bigint, false)", [table, id]);
+  }
+  return { policyId, intentId, snapshotId, gateId, args: { dbClient: db, proposal, transition, now } };
 }
 
-async function cutoverEvidence({ policyId, args }, snapshotId) {
+async function cutoverEvidence({ policyId, args, snapshotId, gateId }) {
   const captured = await persistPolicyLibraryRebuildRollbackSnapshot(args);
   const captureReplay = await persistPolicyLibraryRebuildRollbackSnapshot(args);
   const cutover = await createPolicyLibraryRebuildCutoverOrchestrator({ dbClient: db }).run(args);
@@ -140,28 +145,32 @@ async function cutoverEvidence({ policyId, args }, snapshotId) {
   expect(cutover).toMatchObject({ statusId: 'cutover_applied', ok: true, checkpoints: { rollbackSnapshot: 'reused' } });
   expect(replacementReplay).toMatchObject({ statusId: 'already_applied', validation: { ok: true } });
   for (const receipt of [captured, captureReplay, cutover, replacementReplay]) {
-    expect(receipt.execution.rollbackSnapshotId).toBe(snapshotId);
+    expect(receipt.execution).toMatchObject({ rollbackSnapshotId: snapshotId, gateId });
   }
-  const { rows } = await db.query(`SELECT gate.rollback_snapshot_id,
+  const { rows } = await db.query(`SELECT gate.id AS gate_id, gate.rollback_snapshot_id,
     capture.metadata ->> 'snapshotId' AS capture_id,
     jsonb_typeof(capture.metadata -> 'snapshotId') AS capture_type,
     replacement.metadata ->> 'rollbackSnapshotId' AS replacement_id,
     jsonb_typeof(replacement.metadata -> 'rollbackSnapshotId') AS replacement_type,
+    replacement.metadata ->> 'executionGateId' AS event_gate_id,
+    jsonb_typeof(replacement.metadata -> 'executionGateId') AS event_gate_type,
     replacement.id AS event_id
     FROM policy_library_rebuild_execution_gates gate
     JOIN policy_intent_migration_events capture ON capture.id = gate.migration_event_id
     JOIN policy_intent_migration_events replacement ON replacement.id = gate.replacement_event_id
     WHERE gate.policy_id = $1`, [policyId]);
   expect(rows).toEqual([{
+    gate_id: gateId,
     rollback_snapshot_id: snapshotId,
     capture_id: String(snapshotId), capture_type: typeof snapshotId,
     replacement_id: String(snapshotId), replacement_type: typeof snapshotId,
+    event_gate_id: String(gateId), event_gate_type: typeof gateId,
     event_id: replacementReplay.execution.replacementEventId,
   }]);
   return { captured, cutover, replacementReplay, eventId: rows[0].event_id };
 }
 
-async function closeRollbackWindow({ policyId, args }, snapshotId) {
+async function closeRollbackWindow({ policyId, args, snapshotId }) {
   await db.query("UPDATE policy_intent_rollback_snapshots SET snapshot_payload = '{}'::jsonb, payload_redacted = true WHERE id = $1", [snapshotId]);
   const now = new Date(args.now.getTime() + 60 * 24 * 60 * 60 * 1000);
   return { policyId, now };
@@ -171,29 +180,43 @@ const readiness = createPolicyLibraryRebuildLegacyDeletionReadinessService({ dbC
 const finalAudit = createPolicyLibraryRebuildLegacyFinalRemovalAuditService({ dbClient: db, buildRemovalInventory });
 
 test.each([
-  ['safe', 901],
-  ['lower', '9007199254740992'],
-  ['upper', '9007199254740993'],
-  ['maximum', '9223372036854775807'],
-])('preserves the %s snapshot ID through each persisted and read-only stage', async (tag, snapshotId) => {
-  const item = await fixture(tag, snapshotId);
-  await cutoverEvidence(item, snapshotId);
-  const expired = await closeRollbackWindow(item, snapshotId);
+  ['safe', 901, 801],
+  ['lower-snapshot', '9007199254740992', 802],
+  ['upper-snapshot', '9007199254740993', 803],
+  ['maximum-snapshot', '9223372036854775807', 804],
+  ['lower-gate', 902, '9007199254740992'],
+  ['upper-gate', 903, '9007199254740993'],
+  ['maximum-gate', 904, '9223372036854775807'],
+])('preserves %s IDs through each persisted and read-only stage', async (tag, snapshotId, gateId) => {
+  const item = await fixture(tag, snapshotId, gateId);
+  await cutoverEvidence(item);
+  const expired = await closeRollbackWindow(item);
   const ready = await readiness.evaluate(expired);
   const plan = await finalAudit.audit(expired);
   expect(ready).toMatchObject({
-    readyForFinalRemovalAudit: true, rollback: { rollbackSnapshotId: snapshotId }, validation: { ok: true },
+    readyForFinalRemovalAudit: true, rollback: { rollbackSnapshotId: snapshotId }, cutover: { gateId }, validation: { ok: true },
   });
   expect(plan).toMatchObject({
-    readyForGlobalReleaseRetirementGate: true, rollback: { rollbackSnapshotId: snapshotId }, validation: { ok: true },
+    readyForGlobalReleaseRetirementGate: true, rollback: { rollbackSnapshotId: snapshotId }, cutover: { gateId }, validation: { ok: true },
   });
 });
 
-test('blocks adjacent strings and matching unsafe JSON numbers in removal evidence', async () => {
-  const snapshotId = '9007199254741016';
-  const item = await fixture('ambiguous', snapshotId);
-  const { captured, cutover, replacementReplay, eventId } = await cutoverEvidence(item, snapshotId);
-  const expired = await closeRollbackWindow(item, snapshotId);
+test.each([
+  {
+    tag: 'ambiguous-snapshot', snapshotId: '9007199254741016', gateId: 805,
+    eventKey: 'rollbackSnapshotId', receiptKey: 'rollbackSnapshotId', planSection: 'rollback',
+  },
+  {
+    tag: 'ambiguous-gate', snapshotId: 905, gateId: '9007199254741016',
+    eventKey: 'executionGateId', receiptKey: 'gateId', planSection: 'cutover',
+  },
+])('blocks adjacent strings and matching unsafe JSON numbers for $tag', async ({
+  tag, snapshotId, gateId, eventKey, receiptKey, planSection,
+}) => {
+  const id = '9007199254741016';
+  const item = await fixture(tag, snapshotId, gateId);
+  const { captured, cutover, replacementReplay, eventId } = await cutoverEvidence(item);
+  const expired = await closeRollbackWindow(item);
   const ready = await readiness.evaluate(expired);
   const plan = await finalAudit.audit(expired);
 
@@ -201,19 +224,19 @@ test('blocks adjacent strings and matching unsafe JSON numbers in removal eviden
     [captured, 'execution', validatePolicyLibraryRebuildSnapshotGate],
     [cutover, 'execution', validatePolicyLibraryRebuildCutoverResult],
     [replacementReplay, 'execution', validatePolicyLibraryRebuildReplacementGate],
-    [ready, 'rollback', validatePolicyLibraryRebuildLegacyDeletionReadiness],
-    [plan, 'rollback', validatePolicyLibraryRebuildLegacyFinalRemovalPlan],
+    [ready, planSection, validatePolicyLibraryRebuildLegacyDeletionReadiness],
+    [plan, planSection, validatePolicyLibraryRebuildLegacyFinalRemovalPlan],
   ]) {
     expect(validate({
-      ...receipt, [field]: { ...receipt[field], rollbackSnapshotId: Number(snapshotId) },
+      ...receipt, [field]: { ...receipt[field], [receiptKey]: Number(id) },
     }).ok).toBe(false);
   }
 
-  for (const [reference, numericJson] of [['9007199254741017', false], [snapshotId, true]]) {
+  for (const [reference, numericJson] of [['9007199254741017', false], [id, true]]) {
     await db.query(`UPDATE policy_intent_migration_events
-      SET metadata = jsonb_set(metadata, '{rollbackSnapshotId}',
+      SET metadata = jsonb_set(metadata, ARRAY[$4::text],
         CASE WHEN $3::boolean THEN to_jsonb($1::text::numeric) ELSE to_jsonb($1::text) END)
-      WHERE id = $2`, [reference, eventId, numericJson]);
+      WHERE id = $2`, [reference, eventId, numericJson, eventKey]);
     const blocked = await readiness.evaluate(expired);
     expect(blocked.readyForFinalRemovalAudit).toBe(false);
     expect(blocked.risks).toContainEqual({ riskId: 'replacement_event_mismatch' });
@@ -222,7 +245,7 @@ test('blocks adjacent strings and matching unsafe JSON numbers in removal eviden
 });
 
 test('rolls back the capture when its completion reports a neighboring snapshot', async () => {
-  const item = await fixture('completion', '9007199254741025');
+  const item = await fixture('capture-completion', '9007199254741025', 806);
   const dbClient = { withTransaction: work => db.withTransaction(client => work({
     query: async (sql, params) => {
       const result = await client.query(sql, params);
@@ -237,4 +260,33 @@ test('rolls back the capture when its completion reports a neighboring snapshot'
     (SELECT COUNT(*)::int FROM policy_intent_rollback_snapshots WHERE policy_id = $1) AS snapshots,
     (SELECT COUNT(*)::int FROM policy_intent_migration_events WHERE policy_id = $1) AS events`, [item.policyId]);
   expect(rows).toEqual([{ gates: 0, snapshots: 0, events: 0 }]);
+});
+
+test('rolls back replacement when completion reports a neighboring execution gate', async () => {
+  const item = await fixture('replacement-completion', 906, '9007199254741025');
+  const capture = await persistPolicyLibraryRebuildRollbackSnapshot(item.args);
+  expect(capture).toMatchObject({ statusId: 'rollback_snapshot_persisted', validation: { ok: true } });
+  const dbClient = { withTransaction: work => db.withTransaction(client => work({
+    query: async (sql, params) => {
+      const result = await client.query(sql, params);
+      if (!sql.includes('UPDATE policy_library_rebuild_execution_gates') ||
+          !sql.includes('replacement_intent_id = $3') || !sql.includes('RETURNING id')) return result;
+      return { ...result, rows: [{ id: '9007199254741024' }] };
+    },
+  })) };
+  const result = await applyPolicyLibraryRebuildReplacement({ ...item.args, dbClient });
+  expect(result).toMatchObject({ statusId: 'failed_rolled_back', validation: { ok: false } });
+  const { rows } = await db.query(`SELECT gate.id, gate.state, gate.rollback_snapshot_id,
+    gate.replacement_intent_id, gate.replacement_event_id, original.active AS original_active,
+    (SELECT COUNT(*)::int FROM policy_intents WHERE policy_id = $1) AS intents,
+    (SELECT COUNT(*)::int FROM policy_intent_rollback_snapshots WHERE policy_id = $1) AS snapshots,
+    (SELECT COUNT(*)::int FROM policy_intent_migration_events WHERE policy_id = $1) AS events
+    FROM policy_library_rebuild_execution_gates gate
+    JOIN policy_intents original ON original.id = gate.intent_id
+    WHERE gate.policy_id = $1`, [item.policyId]);
+  expect(rows).toEqual([{
+    id: item.gateId, state: 'snapshot_persisted', rollback_snapshot_id: item.snapshotId,
+    replacement_intent_id: null, replacement_event_id: null, original_active: true,
+    intents: 1, snapshots: 1, events: 1,
+  }]);
 });

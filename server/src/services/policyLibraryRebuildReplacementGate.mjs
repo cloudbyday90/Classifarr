@@ -153,7 +153,7 @@ function buildAppliedResult({
     statusId,
     evaluatedAt: now.toISOString(),
     execution: {
-      gateId: Number(execution.id),
+      gateId: normalizeDatabaseBigintId(execution.id),
       policyId: Number(execution.policy_id),
       originalIntentId: Number(execution.intent_id),
       replacementIntentId: Number(execution.replacement_intent_id),
@@ -240,7 +240,7 @@ function validatePolicyLibraryRebuildReplacementGate(result = {}) {
       POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.REPLACEMENT_APPLIED,
       POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.ALREADY_APPLIED,
     ].includes(result.statusId) &&
-    (!Number.isInteger(execution.gateId) ||
+    (normalizeDatabaseBigintId(execution.gateId) === null ||
       !Number.isInteger(execution.originalIntentId) ||
       !Number.isInteger(execution.replacementIntentId) ||
       !Number.isInteger(execution.replacementEventId) ||
@@ -361,7 +361,8 @@ async function applyPolicyLibraryRebuildReplacement({
         });
       }
 
-      if (!executionMatchesTransition(execution, trustedTransition)) {
+      const executionId = normalizeDatabaseBigintId(execution.id);
+      if (executionId === null || !executionMatchesTransition(execution, trustedTransition)) {
         return buildBlockedResult({
           statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
           now: executionTime,
@@ -517,13 +518,13 @@ async function applyPolicyLibraryRebuildReplacement({
 
       const markedGateId = await markExecutionReplacementApplied({
         client,
-        executionId: execution.id,
+        executionId,
         replacementIntentId: replacementIntent.intentId,
         replacementEventId,
         now: executionTime,
       });
-      if (!markedGateId) {
-        throw new Error('Replacement execution gate was not marked applied.');
+      if (normalizeDatabaseBigintId(markedGateId) !== executionId) {
+        throw new Error('Replacement did not complete on the locked execution gate.');
       }
 
       return buildAppliedResult({

@@ -94,7 +94,7 @@ function summarizeExecution(value = null) {
   const execution = asObject(value);
 
   return {
-    gateId: normalizePositiveInteger(execution.gateId),
+    gateId: normalizeDatabaseBigintId(execution.gateId),
     policyId: normalizePositiveInteger(execution.policyId),
     originalIntentId: normalizePositiveInteger(execution.originalIntentId),
     replacementIntentId: normalizePositiveInteger(execution.replacementIntentId),
@@ -217,7 +217,7 @@ function validatePolicyLibraryRebuildCutoverResult(result = {}) {
     issues.push({ riskId: POLICY_LIBRARY_REBUILD_CUTOVER_RISK_IDS.UNSAFE_CUTOVER_OUTPUT });
   }
 
-  if (succeeded && (!Number.isInteger(execution.gateId) ||
+  if (succeeded && (normalizeDatabaseBigintId(execution.gateId) === null ||
       !Number.isInteger(execution.policyId) ||
       !Number.isInteger(execution.originalIntentId) ||
       !Number.isInteger(execution.replacementIntentId) ||

@@ -103,7 +103,7 @@ function summarizeReadiness(value = {}) {
       libraryId: normalizePositiveInteger(policy.libraryId),
     },
     cutover: {
-      gateId: normalizePositiveInteger(cutover.gateId),
+      gateId: normalizeDatabaseBigintId(cutover.gateId),
       originalIntentId: normalizePositiveInteger(cutover.originalIntentId),
       replacementIntentId: normalizePositiveInteger(cutover.replacementIntentId),
       replacementEventId: normalizePositiveInteger(cutover.replacementEventId),
@@ -335,7 +335,7 @@ function validatePolicyLibraryRebuildLegacyFinalRemovalPlan(plan = {}) {
   }
 
   if (ready && (!result.policy?.policyId || !result.policy?.libraryId ||
-      !result.cutover?.gateId || !result.cutover?.originalIntentId ||
+      normalizeDatabaseBigintId(result.cutover?.gateId) === null || !result.cutover?.originalIntentId ||
       !result.cutover?.replacementIntentId || !result.cutover?.replacementEventId ||
       !SHA256_FINGERPRINT_PATTERN.test(result.cutover?.transitionFingerprint || '') ||
       !SHA256_FINGERPRINT_PATTERN.test(result.cutover?.proposalFingerprint || '') ||
