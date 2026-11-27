@@ -68,7 +68,7 @@ function createClient({
       if (statement.includes('FROM library_policies')) {
         return { rows: policy ? [policy] : [], rowCount: policy ? 1 : 0 };
       }
-      if (statement.includes('FROM policy_initial_intent_establishments') && statement.includes('idempotency_key')) {
+      if (statement.includes('WHERE establishment.idempotency_key = $1')) {
         return { rows: existingByKey ? [existingByKey] : [], rowCount: existingByKey ? 1 : 0 };
       }
       if (statement.includes('FROM policy_initial_intent_establishments')) {
@@ -302,6 +302,40 @@ describe('policyInitialIntentEstablishmentService', () => {
       expect.stringContaining('DELETE FROM policy_native_intent_reconciliation_states'),
       expect.anything()
     );
+  });
+
+  test('recovers the exact receipt when reservation returns no row after a competing insert', async () => {
+    const validatedRequest = validatePolicyInitialIntentEstablishmentRequest(request());
+    const existingByKey = {
+      id: '9007199254740993',
+      policy_id: 44,
+      intent_id: '9007199254740995',
+      rollback_snapshot_id: '9007199254740997',
+      request_fingerprint: buildInitialIntentRequestFingerprint(validatedRequest),
+      accepted_by: 7,
+      state: 'established',
+    };
+    const client = createClient({ reserveId: null, existingByKey });
+    const query = client.query.getMockImplementation();
+    let keyReads = 0;
+    client.query.mockImplementation(sql => {
+      if (sql.includes('WHERE establishment.idempotency_key = $1')) {
+        keyReads += 1;
+        if (keyReads === 1) return Promise.resolve({ rows: [], rowCount: 0 });
+      }
+      return query(sql);
+    });
+
+    const result = await applyPolicyInitialIntentEstablishmentInTransaction({ client, ...serviceRequest() });
+
+    expect(keyReads).toBe(2);
+    expect(result.establishment).toMatchObject({
+      id: existingByKey.id,
+      intentId: existingByKey.intent_id,
+      rollbackSnapshotId: existingByKey.rollback_snapshot_id,
+      replayed: true,
+    });
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO policy_intents'), expect.anything());
   });
 
   test('rolls back the entire transition when a late persistence write fails', async () => {

@@ -44,6 +44,9 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   rollback event for their policy and preserve large event IDs during reentry.
 - **Native-intent rollback snapshots** — Restore the requested snapshot and
   its intended authority with exact BIGINT IDs in replay and audit records.
+- **Initial native intent establishment** — Preserve exact BIGINT receipt
+  IDs in establishment, replay, and readiness, and read the declared rules
+  for the saved intent.
 
 ## [v0.49.5-beta] - 2026-11-24
 

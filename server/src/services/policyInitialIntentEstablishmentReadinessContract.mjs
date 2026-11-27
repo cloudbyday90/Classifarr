@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   validatePolicyInitialDeclaredIntent,
 } from './policyInitialIntentEstablishmentContract.mjs';
@@ -174,12 +175,12 @@ function buildDeclaredRuleSummary(rows = [], { establishmentRecorded = false } =
 
 function buildRecovery({ record = {}, now = new Date() } = {}) {
   const establishmentState = record.establishment_state;
-  const snapshotId = normalizePositiveInteger(record.rollback_snapshot_id);
+  const snapshotId = normalizeDatabaseBigintId(record.rollback_snapshot_id);
   const expiresAt = normalizeTimestamp(record.rollback_expires_at);
   const restoredAt = normalizeTimestamp(record.rollback_restored_at);
   const currentTime = now instanceof Date ? now : new Date(now);
 
-  if (!normalizePositiveInteger(record.establishment_id)) {
+  if (normalizeDatabaseBigintId(record.establishment_id) === null) {
     return {
       stateId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.NOT_APPLICABLE,
       rollbackAvailable: false,
@@ -259,7 +260,7 @@ function buildRecovery({ record = {}, now = new Date() } = {}) {
 }
 
 function buildEstablishmentHistory(record = {}, recovery) {
-  const establishmentId = normalizePositiveInteger(record.establishment_id);
+  const establishmentId = normalizeDatabaseBigintId(record.establishment_id);
   if (!establishmentId) {
     return {
       stateId: 'not_recorded',
@@ -278,7 +279,7 @@ function buildEstablishmentHistory(record = {}, recovery) {
     idempotencyStateId: record.establishment_state === 'established' ? 'recorded' : 'pending',
     establishment: {
       id: establishmentId,
-      intentId: normalizePositiveInteger(record.established_intent_id),
+      intentId: normalizeDatabaseBigintId(record.established_intent_id),
       establishedAt: normalizeTimestamp(record.established_at),
       authoritySourceId: 'operator_declared_intent',
     },

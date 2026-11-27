@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS,
   applyPolicyInitialIntentEstablishmentInTransaction,
@@ -35,11 +36,11 @@ export class PolicyNativeIntentCreateConflictError extends Error {
   }
 }
 
-function buildReplayEstablishment(receipt) {
+function buildReplayEstablishment(receipt, intentId) {
   return {
     statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.REPLAYED,
     establishment: {
-      intentId: Number(receipt.intent_id),
+      intentId,
       applied: false,
       replayed: true,
     },
@@ -53,7 +54,6 @@ function buildReplayEstablishment(receipt) {
 function matchesNativePolicyCreateReplay({ receipt, policy, actorId, establishmentRequest }) {
   return receipt?.state === 'established'
     && Number(receipt.policy_id) > 0
-    && Number(receipt.intent_id) > 0
     && Number(receipt.library_id) === Number(policy.libraryId)
     && receipt.policy_name === policy.name
     && Number(receipt.accepted_by) === Number(actorId)
@@ -82,7 +82,8 @@ export async function createNativeIntentPolicyInTransaction({
     idempotencyKey: establishmentRequest.idempotency_key,
   });
   if (existingReceipt) {
-    if (!matchesNativePolicyCreateReplay({
+    const intentId = normalizeDatabaseBigintId(existingReceipt.intent_id);
+    if (intentId === null || !matchesNativePolicyCreateReplay({
       receipt: existingReceipt,
       policy,
       actorId,
@@ -100,7 +101,7 @@ export async function createNativeIntentPolicyInTransaction({
         library_id: Number(existingReceipt.library_id),
         name: existingReceipt.policy_name,
       },
-      nativeIntentEstablishment: buildReplayEstablishment(existingReceipt),
+      nativeIntentEstablishment: buildReplayEstablishment(existingReceipt, intentId),
     };
   }
 

@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_INITIAL_INTENT_ESTABLISHMENT_RISK_IDS,
   POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS,
@@ -119,13 +120,20 @@ function buildResult({
 }
 
 function buildReplayResult({ existing, policyId, establishedAt }) {
+  const establishmentId = normalizeDatabaseBigintId(existing.id);
+  const intentId = normalizeDatabaseBigintId(existing.intent_id);
+  const rollbackSnapshotId = normalizeDatabaseBigintId(existing.rollback_snapshot_id);
+  if (establishmentId === null || intentId === null || rollbackSnapshotId === null) {
+    throw new Error('Completed native intent establishment has an invalid receipt identifier.');
+  }
+
   return buildResult({
     statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.REPLAYED,
     policyId,
     establishedAt,
-    establishmentId: Number(existing.id),
-    intentId: Number(existing.intent_id),
-    rollbackSnapshotId: Number(existing.rollback_snapshot_id),
+    establishmentId,
+    intentId,
+    rollbackSnapshotId,
     replayed: true,
     routingConfigured: false,
     ruleCount: 0,
@@ -324,7 +332,7 @@ async function establishPolicyInitialIntentWithClient({ client, context }) {
         requestFingerprint,
         actorId: normalizedActorId,
       });
-      if (!reservationId) {
+      if (reservationId === null) {
         const concurrent = await lockInitialEstablishmentByIdempotencyKey(
           client,
           validatedRequest.idempotency_key
@@ -352,15 +360,15 @@ async function establishPolicyInitialIntentWithClient({ client, context }) {
       }
 
       const routingTarget = await lockLibraryRoutingTarget(client, policy.library_id);
-      const intentId = await insertInitialNativeIntentHeader({
+      const intentId = normalizeDatabaseBigintId(await insertInitialNativeIntentHeader({
         client,
         policy,
         contract,
         actorId: normalizedActorId,
         establishedAt,
-      });
-      if (!intentId) {
-        throw new Error('Initial native intent header did not return an identifier.');
+      }));
+      if (intentId === null) {
+        throw new Error('Initial native intent header did not return a valid identifier.');
       }
 
       // This captures only the already-stored, bounded library observation. It
@@ -401,13 +409,17 @@ async function establishPolicyInitialIntentWithClient({ client, context }) {
         actorId: normalizedActorId,
         requestFingerprint,
       });
-      const rollbackSnapshotId = await insertInitialIntentRollbackSnapshot({
+      const rollbackSnapshotId = normalizeDatabaseBigintId(await insertInitialIntentRollbackSnapshot({
         client,
         intentId,
         policy,
         routingTarget,
         establishedAt,
-      });
+      }));
+      if (!migrationEventId || rollbackSnapshotId === null) {
+        throw new Error('Initial native intent establishment audit record was incomplete.');
+      }
+
       const completedId = await completeInitialEstablishment({
         client,
         establishmentId: reservationId,
@@ -416,8 +428,8 @@ async function establishPolicyInitialIntentWithClient({ client, context }) {
         rollbackSnapshotId,
         establishedAt,
       });
-      if (!migrationEventId || !rollbackSnapshotId || !completedId) {
-        throw new Error('Initial native intent establishment audit record was incomplete.');
+      if (normalizeDatabaseBigintId(completedId) !== reservationId) {
+        throw new Error('Initial native intent completion did not return the reserved identifier.');
       }
       const clearedReconciliationPolicyId = await clearInitialEstablishmentReconciliationState({
         client,
@@ -428,9 +440,9 @@ async function establishPolicyInitialIntentWithClient({ client, context }) {
         statusId: POLICY_INITIAL_INTENT_ESTABLISHMENT_STATUS_IDS.ESTABLISHED,
         policyId: Number(policy.id),
         establishedAt,
-        establishmentId: Number(completedId),
-        intentId: Number(intentId),
-        rollbackSnapshotId: Number(rollbackSnapshotId),
+        establishmentId: reservationId,
+        intentId,
+        rollbackSnapshotId,
         applied: true,
         routingConfigured,
         reconciliationStateCleared: Number(clearedReconciliationPolicyId) === Number(policy.id),

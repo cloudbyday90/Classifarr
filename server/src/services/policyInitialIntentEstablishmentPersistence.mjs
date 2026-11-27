@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+
 function firstRow(result) {
   return Array.isArray(result?.rows) ? result.rows[0] || null : null;
 }
@@ -149,7 +151,13 @@ async function reserveInitialEstablishment({
     [policyId, libraryId, idempotencyKey, requestFingerprint, actorId]
   );
 
-  return firstRow(result)?.id ?? null;
+  const reserved = firstRow(result);
+  if (!reserved && result.rowCount === 0) return null;
+  const reservationId = normalizeDatabaseBigintId(reserved?.id);
+  if (reservationId === null) {
+    throw new Error('Initial native intent reservation did not return a valid identifier.');
+  }
+  return reservationId;
 }
 
 async function insertInitialNativeIntentHeader({ client, policy, contract, actorId, establishedAt }) {

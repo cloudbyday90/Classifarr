@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+
 function firstRow(result) {
   return Array.isArray(result?.rows) ? result.rows[0] || null : null;
 }
@@ -77,8 +79,8 @@ async function fetchPolicyInitialIntentEstablishmentReadiness(dbClient, policyId
     return { readiness: null, rules: [] };
   }
 
-  const intentId = Number(readiness.established_intent_id);
-  if (!Number.isInteger(intentId) || intentId <= 0) {
+  const intentId = normalizeDatabaseBigintId(readiness.established_intent_id);
+  if (intentId === null) {
     return { readiness, rules: [] };
   }
 
