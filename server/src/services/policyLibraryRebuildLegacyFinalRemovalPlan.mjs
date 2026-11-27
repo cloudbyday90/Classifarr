@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_LIBRARY_REBUILD_LEGACY_DELETION_READINESS_DISPOSITION_IDS,
   POLICY_LIBRARY_REBUILD_LEGACY_DELETION_READINESS_STATUS_IDS,
@@ -116,7 +117,7 @@ function summarizeReadiness(value = {}) {
       verifierStatusId: normalizeString(verification.verifierStatusId),
     },
     rollback: {
-      rollbackSnapshotId: normalizePositiveInteger(rollback.rollbackSnapshotId),
+      rollbackSnapshotId: normalizeDatabaseBigintId(rollback.rollbackSnapshotId),
       dispositionId: normalizeString(rollback.dispositionId),
       expiresAt: normalizeIsoDate(rollback.expiresAt),
     },
@@ -341,7 +342,7 @@ function validatePolicyLibraryRebuildLegacyFinalRemovalPlan(plan = {}) {
       !normalizeIsoDate(result.cutover?.appliedAt) || !result.verification?.verificationRunId ||
       !SHA256_FINGERPRINT_PATTERN.test(result.verification?.verifierFingerprint || '') ||
       result.verification?.verifierStatusId !== 'no_migration_differences' ||
-      !result.rollback?.rollbackSnapshotId ||
+      normalizeDatabaseBigintId(result.rollback?.rollbackSnapshotId) === null ||
       result.rollback?.dispositionId !== POLICY_LIBRARY_REBUILD_LEGACY_DELETION_READINESS_DISPOSITION_IDS
         .WINDOW_CLOSED_PAYLOAD_REDACTED ||
       !normalizeIsoDate(result.rollback?.expiresAt) ||

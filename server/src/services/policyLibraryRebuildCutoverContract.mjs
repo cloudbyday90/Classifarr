@@ -8,6 +8,8 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+
 const POLICY_LIBRARY_REBUILD_CUTOVER_VERSION =
   'policy.library_rebuild_cutover.v1';
 
@@ -97,7 +99,7 @@ function summarizeExecution(value = null) {
     originalIntentId: normalizePositiveInteger(execution.originalIntentId),
     replacementIntentId: normalizePositiveInteger(execution.replacementIntentId),
     replacementEventId: normalizePositiveInteger(execution.replacementEventId),
-    rollbackSnapshotId: normalizePositiveInteger(execution.rollbackSnapshotId),
+    rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollbackSnapshotId),
     verificationRunId: normalizePositiveInteger(execution.verificationRunId),
     transitionFingerprint: normalizeFingerprint(execution.transitionFingerprint),
     proposalFingerprint: normalizeFingerprint(execution.proposalFingerprint),
@@ -220,7 +222,7 @@ function validatePolicyLibraryRebuildCutoverResult(result = {}) {
       !Number.isInteger(execution.originalIntentId) ||
       !Number.isInteger(execution.replacementIntentId) ||
       !Number.isInteger(execution.replacementEventId) ||
-      !Number.isInteger(execution.rollbackSnapshotId) ||
+      normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
       !Number.isInteger(execution.verificationRunId) ||
       !SHA256_FINGERPRINT_PATTERN.test(execution.transitionFingerprint || '') ||
       !SHA256_FINGERPRINT_PATTERN.test(execution.proposalFingerprint || '') ||

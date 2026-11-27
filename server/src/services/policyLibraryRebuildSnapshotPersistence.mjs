@@ -328,7 +328,7 @@ async function createMigrationEvent({ client, intent, transition, snapshotId }) 
         proposalFingerprint: transition.proposalFingerprint.fingerprint,
         rollbackPlanFingerprint: transition.rollbackPlanFingerprint.fingerprint,
         idempotencyKey: transition.replayProtection.idempotencyKey,
-        snapshotId: Number(snapshotId),
+        snapshotId,
         actorSourceId: transition.acceptance.actorSourceId,
         actorReference: transition.acceptance.actorReference,
       }),
@@ -339,14 +339,15 @@ async function createMigrationEvent({ client, intent, transition, snapshotId }) 
 }
 
 async function markExecutionSnapshotPersisted({ client, gateId, snapshotId, eventId, now }) {
-  await client.query(
+  const result = await client.query(
     `UPDATE policy_library_rebuild_execution_gates
      SET state = $2,
          rollback_snapshot_id = $3,
          migration_event_id = $4,
          updated_at = $5
      WHERE id = $1
-       AND state = $6`,
+       AND state = $6
+     RETURNING id, rollback_snapshot_id`,
     [
       gateId,
       POLICY_LIBRARY_REBUILD_EXECUTION_STATE_IDS.SNAPSHOT_PERSISTED,
@@ -356,6 +357,7 @@ async function markExecutionSnapshotPersisted({ client, gateId, snapshotId, even
       POLICY_LIBRARY_REBUILD_EXECUTION_STATE_IDS.SNAPSHOT_PERSISTING,
     ]
   );
+  return getFirstRow(result);
 }
 
 export {

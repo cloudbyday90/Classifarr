@@ -124,6 +124,7 @@ async function lockReplacementEvent({ client, replacementEventId, policyId }) {
        event_type,
        metadata ->> 'executionGateId' AS execution_gate_id,
        metadata ->> 'rollbackSnapshotId' AS rollback_snapshot_id,
+       jsonb_typeof(metadata -> 'rollbackSnapshotId') AS rollback_snapshot_id_json_type,
        metadata ->> 'verificationRunId' AS verification_run_id,
        metadata ->> 'transitionFingerprint' AS transition_fingerprint,
        metadata ->> 'verificationRunFingerprint' AS verification_run_fingerprint

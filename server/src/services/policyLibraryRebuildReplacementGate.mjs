@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS,
   validatePolicyLibraryRebuildAcceptanceTransition,
@@ -157,7 +158,7 @@ function buildAppliedResult({
       originalIntentId: Number(execution.intent_id),
       replacementIntentId: Number(execution.replacement_intent_id),
       replacementEventId: Number(execution.replacement_event_id),
-      rollbackSnapshotId: Number(execution.rollback_snapshot_id),
+      rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollback_snapshot_id),
       transitionFingerprint: execution.transition_fingerprint,
       proposalFingerprint: execution.proposal_fingerprint,
       verificationRunId: Number(verificationRun.id),
@@ -243,7 +244,7 @@ function validatePolicyLibraryRebuildReplacementGate(result = {}) {
       !Number.isInteger(execution.originalIntentId) ||
       !Number.isInteger(execution.replacementIntentId) ||
       !Number.isInteger(execution.replacementEventId) ||
-      !Number.isInteger(execution.rollbackSnapshotId) ||
+      normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
       !hasFingerprint(execution.transitionFingerprint) ||
       !Number.isInteger(execution.verificationRunId) ||
       !hasFingerprint(execution.verificationRunFingerprint) ||
@@ -437,14 +438,15 @@ async function applyPolicyLibraryRebuildReplacement({
         });
       }
 
-      const rollbackSnapshot = await lockRollbackSnapshot({
+      const rollbackSnapshotId = normalizeDatabaseBigintId(execution.rollback_snapshot_id);
+      const rollbackSnapshot = rollbackSnapshotId === null ? null : await lockRollbackSnapshot({
         client,
-        snapshotId: execution.rollback_snapshot_id,
+        snapshotId: rollbackSnapshotId,
         policyId: policy.id,
         intentId: currentIntent.id,
         now: executionTime,
       });
-      if (!rollbackSnapshot) {
+      if (!rollbackSnapshot || normalizeDatabaseBigintId(rollbackSnapshot.id) !== rollbackSnapshotId) {
         return buildBlockedResult({
           statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
           now: executionTime,

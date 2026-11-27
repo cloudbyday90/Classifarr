@@ -47,6 +47,9 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 - **Initial native intent establishment** — Preserve exact BIGINT receipt
   IDs in establishment, replay, and readiness, and read the declared rules
   for the saved intent.
+- **Library rebuild rollback evidence** — Carry exact snapshot IDs through
+  cutover and removal readiness, and refuse ambiguous historical
+  numeric audit references.
 
 ## [v0.49.5-beta] - 2026-11-24
 

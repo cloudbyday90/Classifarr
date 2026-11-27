@@ -6,6 +6,8 @@
  * See LICENSE file for details.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+
 const POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS = Object.freeze({
   SNAPSHOT_PERSISTED: 'snapshot_persisted',
   REPLACEMENT_APPLIED: 'replacement_applied',
@@ -306,7 +308,7 @@ async function insertReplacementMigrationEvent({
         transitionFingerprint: execution.transition_fingerprint,
         proposalFingerprint: execution.proposal_fingerprint,
         rollbackPlanFingerprint: execution.rollback_plan_fingerprint,
-        rollbackSnapshotId: Number(execution.rollback_snapshot_id),
+        rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollback_snapshot_id),
         ...verificationReceipt,
       }),
     ]

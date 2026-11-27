@@ -284,6 +284,10 @@ function createClient({
         return { rows: [{ id: 951 }], rowCount: 1 };
       }
 
+      if (statement.includes('RETURNING id, rollback_snapshot_id')) {
+        return { rows: [{ id: 801, rollback_snapshot_id: 901 }], rowCount: 1 };
+      }
+
       return { rows: [], rowCount: 1 };
     }),
   };

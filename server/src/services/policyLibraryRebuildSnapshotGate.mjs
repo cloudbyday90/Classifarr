@@ -6,6 +6,7 @@
  * See LICENSE file for details.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_LIBRARY_REBUILD_ACCEPTANCE_STATUS_IDS,
   validatePolicyLibraryRebuildAcceptanceTransition,
@@ -166,7 +167,7 @@ function buildPersistedResult({
       verificationRunId: Number(execution.verification_run_id),
       verificationRunFingerprint: execution.verification_run_fingerprint,
       acceptanceExpiresAt: execution.acceptance_expires_at,
-      rollbackSnapshotId: Number(execution.rollback_snapshot_id),
+      rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollback_snapshot_id),
       migrationEventId: Number(execution.migration_event_id),
       idempotent,
     },
@@ -250,7 +251,7 @@ function validatePolicyLibraryRebuildSnapshotGate(result = {}) {
         !hasFingerprint(execution.rollbackPlanFingerprint) ||
         !Number.isInteger(execution.verificationRunId) ||
         !hasFingerprint(execution.verificationRunFingerprint) ||
-        !Number.isInteger(execution.rollbackSnapshotId) ||
+        normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
         !Number.isInteger(execution.migrationEventId) ||
         result.application?.persistedRollbackSnapshotPresent !== true) {
       issues.push({
@@ -431,12 +432,12 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         });
       }
 
-      const gateId = await createExecutionGate(
+      const gateId = normalizeDatabaseBigintId(await createExecutionGate(
         client,
         trustedTransition,
         verificationBinding.verificationRun,
         executionTime,
-      );
+      ));
       if (!gateId) {
         const error = new Error('Library rebuild execution gate insert did not return an identifier.');
         error.riskId = POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.EXECUTION_GATE_INSERT_FAILED;
@@ -447,7 +448,7 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         loadPolicyPresets(client, policy.id),
         loadRoutingTarget(client, policy.library_id),
       ]);
-      const snapshotId = await createRollbackSnapshot({
+      const snapshotId = normalizeDatabaseBigintId(await createRollbackSnapshot({
         client,
         policy,
         intent,
@@ -455,7 +456,7 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         routingTarget,
         transition: trustedTransition,
         now: executionTime,
-      });
+      }));
       if (!snapshotId) {
         const error = new Error('Accepted rebuild rollback snapshot did not match the current native intent.');
         error.riskId = POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_RISK_IDS.INTENT_CONTEXT_NOT_CURRENT;
@@ -474,13 +475,17 @@ async function persistPolicyLibraryRebuildRollbackSnapshot({
         throw error;
       }
 
-      await markExecutionSnapshotPersisted({
+      const persisted = await markExecutionSnapshotPersisted({
         client,
         gateId,
         snapshotId,
         eventId,
         now: executionTime,
       });
+      if (normalizeDatabaseBigintId(persisted?.id) !== gateId ||
+          normalizeDatabaseBigintId(persisted?.rollback_snapshot_id) !== snapshotId) {
+        throw new Error('Library rebuild capture did not persist the expected rollback snapshot.');
+      }
 
       return buildPersistedResult({
         statusId: POLICY_LIBRARY_REBUILD_SNAPSHOT_GATE_STATUS_IDS.ROLLBACK_SNAPSHOT_PERSISTED,

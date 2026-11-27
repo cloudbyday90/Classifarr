@@ -8,6 +8,7 @@
  * (at your option) any later version.
  */
 
+import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
   POLICY_LIBRARY_REBUILD_LEGACY_REMOVAL_INVENTORY_STATUS_IDS,
   POLICY_LIBRARY_REBUILD_LEGACY_REMOVAL_INVENTORY_VERSION,
@@ -111,7 +112,7 @@ function summarizeExecutionGate(value = {}) {
     replacementEventId: normalizePositiveInteger(
       gate.replacement_event_id ?? gate.replacementEventId,
     ),
-    rollbackSnapshotId: normalizePositiveInteger(
+    rollbackSnapshotId: normalizeDatabaseBigintId(
       gate.rollback_snapshot_id ?? gate.rollbackSnapshotId,
     ),
     verificationRunId: normalizePositiveInteger(
@@ -181,7 +182,7 @@ function summarizeRollbackSnapshot(value = {}) {
   const snapshot = asObject(value);
 
   return {
-    rollbackSnapshotId: normalizePositiveInteger(snapshot.id),
+    rollbackSnapshotId: normalizeDatabaseBigintId(snapshot.id),
     policyId: normalizePositiveInteger(snapshot.policy_id ?? snapshot.policyId),
     originalIntentId: normalizePositiveInteger(snapshot.intent_id ?? snapshot.intentId),
     payloadRedacted: (snapshot.payload_redacted ?? snapshot.payloadRedacted) === true,
@@ -192,6 +193,11 @@ function summarizeRollbackSnapshot(value = {}) {
 
 function summarizeReplacementEvent(value = {}) {
   const event = asObject(value);
+  const snapshotId = normalizeDatabaseBigintId(event.rollback_snapshot_id ?? event.rollbackSnapshotId);
+  const snapshotJsonType = event.rollback_snapshot_id_json_type;
+  // SQL reports both text and type so numeric JSON can only attest safe IDs.
+  const exactSnapshotId = snapshotJsonType === undefined || snapshotJsonType === 'string' ||
+    (snapshotJsonType === 'number' && typeof snapshotId === 'number') ? snapshotId : null;
 
   return {
     replacementEventId: normalizePositiveInteger(event.id),
@@ -199,7 +205,7 @@ function summarizeReplacementEvent(value = {}) {
     replacementIntentId: normalizePositiveInteger(event.intent_id ?? event.intentId),
     eventType: normalizeString(event.event_type ?? event.eventType),
     executionGateId: normalizePositiveInteger(event.execution_gate_id ?? event.executionGateId),
-    rollbackSnapshotId: normalizePositiveInteger(event.rollback_snapshot_id ?? event.rollbackSnapshotId),
+    rollbackSnapshotId: exactSnapshotId,
     verificationRunId: normalizePositiveInteger(event.verification_run_id ?? event.verificationRunId),
     transitionFingerprint: normalizeFingerprint(
       event.transition_fingerprint ?? event.transitionFingerprint,
@@ -514,6 +520,7 @@ function validatePolicyLibraryRebuildLegacyDeletionReadiness(readiness = {}) {
   }
 
   if (ready && (!result.cutover?.gateId || !result.verification?.verificationRunId ||
+      normalizeDatabaseBigintId(result.rollback?.rollbackSnapshotId) === null ||
       result.rollback?.dispositionId !== POLICY_LIBRARY_REBUILD_LEGACY_DELETION_READINESS_DISPOSITION_IDS
         .WINDOW_CLOSED_PAYLOAD_REDACTED ||
       result.runtimeAuthority?.activeNativeIntentCount !== 1 ||
