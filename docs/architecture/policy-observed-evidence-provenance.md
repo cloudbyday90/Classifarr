@@ -129,6 +129,10 @@ Cleanup does not change policy authority, routing, learning, or media state.
   establishment, policy, library, and intent references.
 - Backup restore retains redacted markers as markers; it never recreates their
   original payload.
+- A retained marker records the owner IDs at the time of redaction. Restore
+  maps the snapshot row's foreign keys to its current owners. A cleanup run
+  that first redacts a restored payload records those current IDs.
+  [Restore continuity design](observed-evidence-marker-restore-design.md)
 - The scheduler cleanup uses a dedicated PostgreSQL transaction advisory lock
   and `FOR UPDATE SKIP LOCKED` to prevent overlap across replicas.
 

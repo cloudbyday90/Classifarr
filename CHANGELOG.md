@@ -13,6 +13,9 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 
 - **Queue evidence verification** — PostgreSQL regression coverage verifies
   that exact task IDs and attempts stay bound through question reduction.
+- **Observed-evidence backup verification** — PostgreSQL regression coverage
+  checks historical retention markers, remapped owners, and redaction after
+  configuration restore.
 
 ### Fixed
 
