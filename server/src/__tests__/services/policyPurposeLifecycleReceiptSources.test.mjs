@@ -44,6 +44,9 @@ describe('policyPurposeLifecycleReceiptSources', () => {
 
     expect(sql.match(/LIMIT \$1/g)).toHaveLength(3)
     expect(sql).not.toContain('active_native_policies active')
+    const initialSource = sql.slice(sql.indexOf('initial_lifecycle_receipts AS'),
+      sql.indexOf('change_lifecycle_receipts AS'))
+    expect(initialSource).toMatch(/establishment_event\.metadata -> 'request_fingerprint'[\s\S]*ORDER BY[\s\S]*LIMIT \$1/)
     const changeSource = sql.slice(sql.indexOf('change_lifecycle_receipts AS'),
       sql.indexOf('library_rebuild_replacement_lifecycle_receipts AS'))
     expect(changeSource).toMatch(/receiptBindingDigest[\s\S]*ORDER BY[\s\S]*LIMIT \$1/)

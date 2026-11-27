@@ -88,6 +88,7 @@ async function createNativePurposeFixture({ libraryName, policyName, purposeRule
 }
 
 async function establishInitialIntent({ policyId, libraryId, intentId }) {
+  const requestFingerprint = `${policyId}`.padStart(64, '0');
   const snapshot = await db.query(`
     INSERT INTO policy_intent_rollback_snapshots (
       intent_id, policy_id, snapshot_version, snapshot_payload,
@@ -98,12 +99,16 @@ async function establishInitialIntent({ policyId, libraryId, intentId }) {
   `, [intentId, policyId]);
   const event = await db.query(`
     INSERT INTO policy_intent_migration_events (
-      intent_id, policy_id, event_type, actor_type,
+      intent_id, policy_id, event_type, actor_type, actor_id,
       target_version, reason_code, metadata
     )
-    VALUES ($1, $2, 'initial_intent_established', 'test_fixture', 1, 'test_fixture', '{}'::jsonb)
+    VALUES ($1, $2, 'initial_intent_established', 'operator', 1,
+      1, 'operator_declared_initial_intent', $3::jsonb)
     RETURNING id
-  `, [intentId, policyId]);
+  `, [intentId, policyId, JSON.stringify({
+    authority_source_id: 'operator_declared_intent',
+    request_fingerprint: requestFingerprint,
+  })]);
   await db.query(`
     INSERT INTO policy_initial_intent_establishments (
       policy_id, library_id, intent_id, migration_event_id, rollback_snapshot_id,
@@ -122,7 +127,7 @@ async function establishInitialIntent({ policyId, libraryId, intentId }) {
     event.rows[0].id,
     snapshot.rows[0].id,
     `policy-purpose-coverage-${policyId}`.padEnd(32, 'x'),
-    `${policyId}`.padStart(64, '0'),
+    requestFingerprint,
   ]);
 }
 

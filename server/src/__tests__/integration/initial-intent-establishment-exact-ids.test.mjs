@@ -15,6 +15,7 @@ const { registerPolicyInitialIntentEstablishmentRoutes } = await import('../../r
 const { registerPolicyInitialIntentEstablishmentReadinessRoutes } = await import('../../routes/policiesRouteInitialIntentEstablishmentReadiness.mjs');
 const { registerPolicyNativeIntentReversionRoutes } = await import('../../routes/policiesRouteNativeIntentReversion.mjs');
 const { registerPolicyWriteRoutes } = await import('../../routes/policiesRoutePolicyWrite.mjs');
+const { loadHeldOutSemanticStudyLifecycleReauditSourceRecord } = await import('../../services/heldOutSemanticStudyLifecycleReauditSource.mjs');
 
 const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 const basePath = '/api/policies';
@@ -135,7 +136,9 @@ test('recovers the exact adjacent receipt and uses its readiness snapshot for ro
 test('preserves the BIGINT maximum in native create, replay and readiness', async () => {
   const maximum = '9223372036854775807';
   const ids = { id: maximum, intentId: maximum, rollbackSnapshotId: maximum };
+  const before = await loadHeldOutSemanticStudyLifecycleReauditSourceRecord({ db });
   await setNextReceiptIds(ids);
+  await db.query("SELECT setval(pg_get_serial_sequence('policy_intent_migration_events', 'id'), $1::bigint, false)", [maximum]);
   const value = await fixture('maximum');
   await db.query('DELETE FROM library_policies WHERE id = $1', [value.policyId]);
   const create = () => request(app()).post(basePath).auth(adminToken, { type: 'bearer' })
@@ -147,6 +150,14 @@ test('preserves the BIGINT maximum in native create, replay and readiness', asyn
     });
   const created = await create().expect(201);
   expect(created.body.native_intent_establishment.intentId).toBe(maximum);
+  const related = await db.query(
+    'SELECT migration_event_id FROM policy_initial_intent_establishments WHERE policy_id = $1', [created.body.id],
+  );
+  expect(related.rows).toEqual([{ migration_event_id: maximum }]);
+  const after = await loadHeldOutSemanticStudyLifecycleReauditSourceRecord({ db });
+  expect(after.initial_intent_establishment_count).toBe(before.initial_intent_establishment_count + 1);
+  // Later independent tests use the same disposable sequence.
+  await db.query("SELECT setval(pg_get_serial_sequence('policy_intent_migration_events', 'id'), 5000, false)");
   const replay = await create().expect(200);
   expect(replay.body.id).toBe(created.body.id);
   expect(replay.body.native_intent_establishment.intentId).toBe(maximum);

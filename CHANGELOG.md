@@ -82,6 +82,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
   counting native changes with large intent or migration event IDs.
 - **Policy-purpose rebuild receipts** — Verify saved capture and replacement
   evidence before counting a library rebuild with large linked IDs.
+- **Policy-purpose establishment receipts** — Count an initial establishment
+  only when its revision-one intent and saved migration event agree.
 
 ## [v0.49.5-beta] - 2026-11-24
 
