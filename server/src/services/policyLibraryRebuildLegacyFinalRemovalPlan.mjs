@@ -106,7 +106,7 @@ function summarizeReadiness(value = {}) {
       gateId: normalizeDatabaseBigintId(cutover.gateId),
       originalIntentId: normalizePositiveInteger(cutover.originalIntentId),
       replacementIntentId: normalizePositiveInteger(cutover.replacementIntentId),
-      replacementEventId: normalizePositiveInteger(cutover.replacementEventId),
+      replacementEventId: normalizeDatabaseBigintId(cutover.replacementEventId),
       transitionFingerprint: normalizeFingerprint(cutover.transitionFingerprint),
       proposalFingerprint: normalizeFingerprint(cutover.proposalFingerprint),
       appliedAt: normalizeIsoDate(cutover.appliedAt),
@@ -336,7 +336,8 @@ function validatePolicyLibraryRebuildLegacyFinalRemovalPlan(plan = {}) {
 
   if (ready && (!result.policy?.policyId || !result.policy?.libraryId ||
       normalizeDatabaseBigintId(result.cutover?.gateId) === null || !result.cutover?.originalIntentId ||
-      !result.cutover?.replacementIntentId || !result.cutover?.replacementEventId ||
+      !result.cutover?.replacementIntentId ||
+      normalizeDatabaseBigintId(result.cutover?.replacementEventId) === null ||
       !SHA256_FINGERPRINT_PATTERN.test(result.cutover?.transitionFingerprint || '') ||
       !SHA256_FINGERPRINT_PATTERN.test(result.cutover?.proposalFingerprint || '') ||
       !normalizeIsoDate(result.cutover?.appliedAt) || !result.verification?.verificationRunId ||

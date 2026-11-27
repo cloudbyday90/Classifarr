@@ -192,6 +192,7 @@ function verificationReceipt(gate, overrides = {}) {
 function createClient({
   gate,
   verificationRun = gate ? verificationReceipt(gate) : null,
+  eventInsertId = 303,
   failRules = false,
 } = {}) {
   return {
@@ -267,12 +268,12 @@ function createClient({
       }
 
       if (statement.includes('INSERT INTO policy_intent_migration_events')) {
-        return { rows: [{ id: 303 }], rowCount: 1 };
+        return { rows: [{ id: eventInsertId }], rowCount: 1 };
       }
 
       if (statement.includes('UPDATE policy_library_rebuild_execution_gates') &&
           statement.includes('RETURNING id')) {
-        return { rows: [{ id: 801 }], rowCount: 1 };
+        return { rows: [{ id: 801, replacement_event_id: 303 }], rowCount: 1 };
       }
 
       return { rows: [], rowCount: 1 };
@@ -398,6 +399,49 @@ describe('policyLibraryRebuildReplacementGate', () => {
     expect(result.execution.idempotent).toBe(true);
     expect(client.query).not.toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_intents'),
+      expect.anything()
+    );
+  });
+
+  test('refuses to replay a completion with an unsafe numeric event reference', async () => {
+    const { proposal, transition } = buildFixture();
+    const client = createClient({
+      gate: execution(transition, {
+        state: 'replacement_applied',
+        replacement_intent_id: 202,
+        replacement_event_id: 9007199254740992,
+        replacement_applied_at: NOW,
+      }),
+    });
+
+    const result = await applyPolicyLibraryRebuildReplacement({
+      dbClient: { withTransaction: async work => work(client) },
+      transition,
+      proposal,
+      now: NOW,
+    });
+
+    expect(result.statusId).toBe(POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE);
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intents'),
+      expect.anything()
+    );
+  });
+
+  test('refuses an unsafe migration event insert acknowledgement before completing the gate', async () => {
+    const { proposal, transition } = buildFixture();
+    const client = createClient({ gate: execution(transition), eventInsertId: 9007199254740992 });
+
+    const result = await applyPolicyLibraryRebuildReplacement({
+      dbClient: { withTransaction: async work => work(client) },
+      transition,
+      proposal,
+      now: NOW,
+    });
+
+    expect(result.statusId).toBe(POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.FAILED_ROLLED_BACK);
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('replacement_event_id = $4'),
       expect.anything()
     );
   });

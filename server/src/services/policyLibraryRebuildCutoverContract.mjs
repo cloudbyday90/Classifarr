@@ -98,7 +98,7 @@ function summarizeExecution(value = null) {
     policyId: normalizePositiveInteger(execution.policyId),
     originalIntentId: normalizePositiveInteger(execution.originalIntentId),
     replacementIntentId: normalizePositiveInteger(execution.replacementIntentId),
-    replacementEventId: normalizePositiveInteger(execution.replacementEventId),
+    replacementEventId: normalizeDatabaseBigintId(execution.replacementEventId),
     rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollbackSnapshotId),
     verificationRunId: normalizePositiveInteger(execution.verificationRunId),
     transitionFingerprint: normalizeFingerprint(execution.transitionFingerprint),
@@ -221,7 +221,7 @@ function validatePolicyLibraryRebuildCutoverResult(result = {}) {
       !Number.isInteger(execution.policyId) ||
       !Number.isInteger(execution.originalIntentId) ||
       !Number.isInteger(execution.replacementIntentId) ||
-      !Number.isInteger(execution.replacementEventId) ||
+      normalizeDatabaseBigintId(execution.replacementEventId) === null ||
       normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
       !Number.isInteger(execution.verificationRunId) ||
       !SHA256_FINGERPRINT_PATTERN.test(execution.transitionFingerprint || '') ||

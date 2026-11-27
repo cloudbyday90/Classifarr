@@ -157,7 +157,7 @@ function buildAppliedResult({
       policyId: Number(execution.policy_id),
       originalIntentId: Number(execution.intent_id),
       replacementIntentId: Number(execution.replacement_intent_id),
-      replacementEventId: Number(execution.replacement_event_id),
+      replacementEventId: normalizeDatabaseBigintId(execution.replacement_event_id),
       rollbackSnapshotId: normalizeDatabaseBigintId(execution.rollback_snapshot_id),
       transitionFingerprint: execution.transition_fingerprint,
       proposalFingerprint: execution.proposal_fingerprint,
@@ -243,7 +243,7 @@ function validatePolicyLibraryRebuildReplacementGate(result = {}) {
     (normalizeDatabaseBigintId(execution.gateId) === null ||
       !Number.isInteger(execution.originalIntentId) ||
       !Number.isInteger(execution.replacementIntentId) ||
-      !Number.isInteger(execution.replacementEventId) ||
+      normalizeDatabaseBigintId(execution.replacementEventId) === null ||
       normalizeDatabaseBigintId(execution.rollbackSnapshotId) === null ||
       !hasFingerprint(execution.transitionFingerprint) ||
       !Number.isInteger(execution.verificationRunId) ||
@@ -420,6 +420,14 @@ async function applyPolicyLibraryRebuildReplacement({
       }
 
       if (execution.state === POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.REPLACEMENT_APPLIED) {
+        if (normalizeDatabaseBigintId(execution.replacement_event_id) === null) {
+          return buildBlockedResult({
+            statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.BLOCKED_BY_CURRENT_STATE,
+            now: executionTime,
+            riskId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_RISK_IDS.EXECUTION_GATE_BINDING_MISMATCH,
+            message: 'Completed replacement does not have a valid migration event reference.',
+          });
+        }
         return buildAppliedResult({
           statusId: POLICY_LIBRARY_REBUILD_REPLACEMENT_GATE_STATUS_IDS.ALREADY_APPLIED,
           now: executionTime,
@@ -505,26 +513,27 @@ async function applyPolicyLibraryRebuildReplacement({
         contract: replacementContract.contract,
         now: executionTime,
       });
-      const replacementEventId = await insertReplacementMigrationEvent({
+      const replacementEventId = normalizeDatabaseBigintId(await insertReplacementMigrationEvent({
         client,
         replacementIntent,
         previousIntent: currentIntent,
         execution,
         verificationRun: verificationBinding.verificationRun,
-      });
-      if (!replacementEventId) {
-        throw new Error('Replacement migration event insert did not return an identifier.');
+      }));
+      if (replacementEventId === null) {
+        throw new Error('Replacement migration event insert did not return a valid identifier.');
       }
 
-      const markedGateId = await markExecutionReplacementApplied({
+      const persisted = await markExecutionReplacementApplied({
         client,
         executionId,
         replacementIntentId: replacementIntent.intentId,
         replacementEventId,
         now: executionTime,
       });
-      if (normalizeDatabaseBigintId(markedGateId) !== executionId) {
-        throw new Error('Replacement did not complete on the locked execution gate.');
+      if (normalizeDatabaseBigintId(persisted?.id) !== executionId ||
+          normalizeDatabaseBigintId(persisted?.replacement_event_id) !== replacementEventId) {
+        throw new Error('Replacement did not persist the expected event on the locked execution gate.');
       }
 
       return buildAppliedResult({

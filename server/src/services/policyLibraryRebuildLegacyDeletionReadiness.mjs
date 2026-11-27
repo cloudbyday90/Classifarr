@@ -109,7 +109,7 @@ function summarizeExecutionGate(value = {}) {
     replacementIntentId: normalizePositiveInteger(
       gate.replacement_intent_id ?? gate.replacementIntentId,
     ),
-    replacementEventId: normalizePositiveInteger(
+    replacementEventId: normalizeDatabaseBigintId(
       gate.replacement_event_id ?? gate.replacementEventId,
     ),
     rollbackSnapshotId: normalizeDatabaseBigintId(
@@ -202,7 +202,7 @@ function summarizeReplacementEvent(value = {}) {
   const event = asObject(value);
 
   return {
-    replacementEventId: normalizePositiveInteger(event.id),
+    replacementEventId: normalizeDatabaseBigintId(event.id),
     policyId: normalizePositiveInteger(event.policy_id ?? event.policyId),
     replacementIntentId: normalizePositiveInteger(event.intent_id ?? event.intentId),
     eventType: normalizeString(event.event_type ?? event.eventType),
@@ -526,6 +526,7 @@ function validatePolicyLibraryRebuildLegacyDeletionReadiness(readiness = {}) {
   }
 
   if (ready && (normalizeDatabaseBigintId(result.cutover?.gateId) === null ||
+      normalizeDatabaseBigintId(result.cutover?.replacementEventId) === null ||
       !result.verification?.verificationRunId ||
       normalizeDatabaseBigintId(result.rollback?.rollbackSnapshotId) === null ||
       result.rollback?.dispositionId !== POLICY_LIBRARY_REBUILD_LEGACY_DELETION_READINESS_DISPOSITION_IDS

@@ -333,7 +333,7 @@ async function markExecutionReplacementApplied({
          updated_at = $5
      WHERE id = $1
        AND state = $6
-     RETURNING id`,
+     RETURNING id, replacement_event_id`,
     [
       executionId,
       POLICY_LIBRARY_REBUILD_REPLACEMENT_STATE_IDS.REPLACEMENT_APPLIED,
@@ -344,7 +344,7 @@ async function markExecutionReplacementApplied({
     ]
   );
 
-  return getFirstRow(result)?.id ?? null;
+  return getFirstRow(result);
 }
 
 export {
