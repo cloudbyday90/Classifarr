@@ -144,6 +144,9 @@ describe('policyInitialIntentEstablishmentReadinessService', () => {
         establishment_state: 'established',
         established_intent_id: 101,
         rollback_snapshot_id: 301,
+        rollback_proof_verified: true,
+        rollback_manifest_valid: true,
+        rollback_active_intent_count: 1,
         established_at: '2026-07-16T17:00:00.000Z',
         established_intent_active: true,
         rollback_expires_at: '2026-07-30T17:00:00.000Z',
@@ -228,6 +231,7 @@ describe('policyInitialIntentEstablishmentReadinessService', () => {
         establishment_state: 'established',
         established_intent_id: 101,
         rollback_snapshot_id: 301,
+        rollback_proof_verified: true,
         established_at: '2026-07-16T17:00:00.000Z',
         established_intent_active: false,
         rollback_expires_at: '2026-07-30T17:00:00.000Z',
@@ -251,6 +255,34 @@ describe('policyInitialIntentEstablishmentReadinessService', () => {
       .toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.REVERTED);
   });
 
+  test.each([
+    ['rollback_proof_unverified', { rollback_proof_verified: false, rollback_restored_at: NOW }],
+    ['rollback_manifest_invalid', { rollback_manifest_valid: false }],
+    ['native_intent_ambiguous', { rollback_active_intent_count: 2 }],
+  ])('reports maintenance without advertising %s as actionable', async (stateId, overrides) => {
+    const dbClient = createDb({
+      record: baseRecord({
+        establishment_id: 51,
+        establishment_state: 'established',
+        established_intent_id: 101,
+        established_intent_active: true,
+        rollback_snapshot_id: 301,
+        rollback_expires_at: '2026-07-30T17:00:00.000Z',
+        rollback_payload_redacted: false,
+        rollback_proof_verified: true,
+        rollback_manifest_valid: true,
+        rollback_active_intent_count: 1,
+        ...overrides,
+      }),
+      rules: [declaredPurposeRule()],
+    });
+
+    const result = await getPolicyInitialIntentEstablishmentReadiness({ dbClient, policyId: 44, now: NOW });
+    expect(result.statusId).toBe(POLICY_INITIAL_INTENT_ESTABLISHMENT_READINESS_STATUS_IDS.RECOVERY_ATTENTION_REQUIRED);
+    expect(result.establishmentHistory.recovery).toMatchObject({ stateId, rollbackAvailable: false, restoredAt: null });
+    expect(dbClient.query.mock.calls[1][1]).toEqual([101, 44, 6]);
+  });
+
   test('fails closed when persisted declared rules cannot be validated', async () => {
     const dbClient = createDb({
       record: baseRecord({
@@ -260,6 +292,9 @@ describe('policyInitialIntentEstablishmentReadinessService', () => {
         establishment_state: 'established',
         established_intent_id: 101,
         rollback_snapshot_id: 301,
+        rollback_proof_verified: true,
+        rollback_manifest_valid: true,
+        rollback_active_intent_count: 1,
         established_at: '2026-07-16T17:00:00.000Z',
         established_intent_active: true,
         rollback_expires_at: '2026-07-30T17:00:00.000Z',

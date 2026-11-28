@@ -109,19 +109,24 @@ failure. It does not return database errors.
 
 | State | Meaning | Action Boundary |
 | --- | --- | --- |
-| `rollback_available` | The recorded initial native intent is active and its unredacted snapshot is still in its restore window. | Existing protected reversion path only. |
-| `reverted` | The snapshot was restored and the first authority was deactivated. | A replacement-authority workflow is required; a second first establishment stays blocked. |
+| `rollback_available` | The snapshot has verified receipt and manifest evidence, is unredacted and unexpired, and its intent is the sole active authority in scope. | Existing protected reversion path only. |
+| `reverted` | The receipt and creation event verify the snapshot with a saved restore time. | A replacement-authority workflow is required. A second first establishment stays blocked. |
 | `rollback_expired` | The restore window ended. | Maintenance review; no automatic recovery. |
 | `rollback_payload_redacted` | Retention removed the restore payload. | Maintenance review; no automatic recovery. |
 | `native_intent_inactive` | The recorded intent is inactive without a completed rollback. | Maintenance review; no automatic recovery. |
-| `rollback_snapshot_missing` | A record is structurally incomplete. | Maintenance review; no automatic recovery. |
+| `rollback_snapshot_missing` | The receipt's snapshot is missing from the current policy. | Maintenance review. |
+| `rollback_proof_unverified` | The receipt, snapshot, or creation event does not verify the link. | Maintenance review. |
+| `rollback_manifest_invalid` | The saved manifest's owner or required fields do not match the current policy. | Maintenance review. |
+| `native_intent_ambiguous` | Multiple active intents share the policy and library scope. | Maintenance review. |
 
 ## Implementation
 
 `policyInitialIntentEstablishmentReadinessPersistence.mjs` uses read-only SQL
 to fetch bounded counts, the single establishment record, and at most 129
-declared-rule rows. It never selects idempotency keys, fingerprints, actors,
-migration metadata, snapshot payloads, library observations, or routing
+declared-rule rows scoped to the current policy, library, and linked intent.
+It evaluates the shared receipt and manifest checks in PostgreSQL and projects
+their booleans. The result excludes idempotency keys, fingerprints, actors,
+migration metadata, snapshot payloads, library observations, and routing
 configuration.
 
 `policyInitialIntentEstablishmentReadinessContract.mjs` turns those facts into

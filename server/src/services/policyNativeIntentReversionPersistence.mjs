@@ -6,10 +6,11 @@
  * See LICENSE file for details.
  */
 
+import { INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX } from './policyInitialEstablishmentReceiptProofSql.mjs';
 import {
-  INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL,
-  INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX,
-} from './policyInitialEstablishmentReceiptProofSql.mjs';
+  INITIAL_ESTABLISHMENT_ROLLBACK_MANIFEST_SQL,
+  INITIAL_ESTABLISHMENT_ROLLBACK_PROOF_SQL,
+} from './policyInitialEstablishmentRollbackSql.mjs';
 
 function firstRow(result) {
   return Array.isArray(result?.rows) ? result.rows[0] || null : null;
@@ -27,7 +28,7 @@ async function lockPolicyForNativeIntentReversion(client, policyId) {
   return firstRow(result);
 }
 
-async function lockRollbackSnapshotForNativeIntentReversion(client, { snapshotId, policyId, libraryId }) {
+async function lockRollbackSnapshotForNativeIntentReversion(client, { snapshotId, policyId }) {
   const result = await client.query(
     `SELECT
        snapshot.id,
@@ -40,26 +41,18 @@ async function lockRollbackSnapshotForNativeIntentReversion(client, { snapshotId
        snapshot.expires_at,
        snapshot.created_at,
        snapshot.restored_at,
-       (starts_with(snapshot.restore_path, $4) OR EXISTS (
+       (starts_with(snapshot.restore_path, $3) OR EXISTS (
          SELECT 1 FROM policy_initial_intent_establishments claim
          WHERE claim.rollback_snapshot_id = snapshot.id
        )) AS requires_establishment_proof,
-       EXISTS (
-         SELECT 1 FROM policy_initial_intent_establishments establishment
-         ${INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL}
-         WHERE establishment.rollback_snapshot_id = snapshot.id
-           AND establishment.policy_id = snapshot.policy_id
-           AND establishment.library_id = $3
-           AND establishment.intent_id = snapshot.intent_id
-           AND establishment.state = 'established'
-           AND establishment.accepted_by > 0
-           AND snapshot.snapshot_version = 1
-       ) AS establishment_proof_verified
+       ${INITIAL_ESTABLISHMENT_ROLLBACK_PROOF_SQL} AS establishment_proof_verified,
+       ${INITIAL_ESTABLISHMENT_ROLLBACK_MANIFEST_SQL} AS establishment_manifest_valid
      FROM policy_intent_rollback_snapshots snapshot
+     JOIN library_policies policy ON policy.id = snapshot.policy_id
      WHERE snapshot.id = $1
        AND snapshot.policy_id = $2
      FOR UPDATE OF snapshot`,
-    [snapshotId, policyId, libraryId, INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX]
+    [snapshotId, policyId, INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX]
   );
 
   return firstRow(result);

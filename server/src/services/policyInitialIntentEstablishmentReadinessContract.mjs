@@ -48,6 +48,9 @@ const POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS = Object.freeze({
   ROLLBACK_EXPIRED: 'rollback_expired',
   ROLLBACK_PAYLOAD_REDACTED: 'rollback_payload_redacted',
   ROLLBACK_SNAPSHOT_MISSING: 'rollback_snapshot_missing',
+  ROLLBACK_PROOF_UNVERIFIED: 'rollback_proof_unverified',
+  ROLLBACK_MANIFEST_INVALID: 'rollback_manifest_invalid',
+  NATIVE_INTENT_AMBIGUOUS: 'native_intent_ambiguous',
   NATIVE_INTENT_INACTIVE: 'native_intent_inactive',
 });
 
@@ -210,52 +213,62 @@ function buildRecovery({ record = {}, now = new Date() } = {}) {
     };
   }
 
+  const unavailable = { rollbackAvailable: false, snapshotId, expiresAt, restoredAt: null };
+
+  if (record.rollback_proof_verified !== true) {
+    return {
+      ...unavailable,
+      stateId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.ROLLBACK_PROOF_UNVERIFIED,
+    };
+  }
+
   if (restoredAt) {
     return {
+      ...unavailable,
       stateId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.REVERTED,
-      rollbackAvailable: false,
-      snapshotId,
-      expiresAt,
       restoredAt,
     };
   }
 
   if (record.rollback_payload_redacted === true) {
     return {
+      ...unavailable,
       stateId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.ROLLBACK_PAYLOAD_REDACTED,
-      rollbackAvailable: false,
-      snapshotId,
-      expiresAt,
-      restoredAt: null,
     };
   }
 
   if (!expiresAt || new Date(expiresAt).getTime() <= currentTime.getTime()) {
     return {
+      ...unavailable,
       stateId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.ROLLBACK_EXPIRED,
-      rollbackAvailable: false,
-      snapshotId,
-      expiresAt,
-      restoredAt: null,
     };
   }
 
-  if (record.established_intent_active !== true) {
+  if (record.rollback_manifest_valid !== true) {
     return {
+      ...unavailable,
+      stateId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.ROLLBACK_MANIFEST_INVALID,
+    };
+  }
+
+  if (record.rollback_active_intent_count > 1) {
+    return {
+      ...unavailable,
+      stateId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.NATIVE_INTENT_AMBIGUOUS,
+    };
+  }
+
+  if (record.established_intent_active !== true || record.rollback_active_intent_count !== 1) {
+    return {
+      ...unavailable,
       stateId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.NATIVE_INTENT_INACTIVE,
-      rollbackAvailable: false,
-      snapshotId,
-      expiresAt,
-      restoredAt: null,
     };
   }
 
   return {
+    ...unavailable,
     stateId: POLICY_INITIAL_INTENT_ESTABLISHMENT_RECOVERY_STATE_IDS.ROLLBACK_AVAILABLE,
     rollbackAvailable: true,
-    snapshotId,
-    expiresAt,
-    restoredAt: null,
   };
 }
 

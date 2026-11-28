@@ -108,6 +108,11 @@ function revert(policyId, snapshotId) {
     .send({ reason_code: 'operator_reviewed' });
 }
 
+async function readReadiness(policyId) {
+  const { body } = await admin.get(`/api/policies/${policyId}/native-intent/initial-establishment/readiness`).expect(200);
+  return body;
+}
+
 async function expectReversionBlocked(policyId, snapshotId, riskId = 'snapshot_not_restorable') {
   const { body } = await revert(policyId, snapshotId).expect(409);
   expect(body).toMatchObject({
@@ -130,8 +135,8 @@ async function reversionState(policyId) {
 test('uses the receipt-backed snapshot for reversion after merge and preserves verified completed replay', async () => {
   const { policyId } = await seed('Initial rollback command', lower, 801);
   await restore(await exportArchive(), 'merge', upper, 1800);
-  const listed = await admin.get(`/api/policies/${policyId}/native-intent/initial-establishment/readiness`).expect(200);
-  expect(listed.body.establishmentHistory.recovery).toMatchObject({ snapshotId: lower, rollbackAvailable: true });
+  const listed = await readReadiness(policyId);
+  expect(listed.establishmentHistory.recovery).toMatchObject({ snapshotId: lower, rollbackAvailable: true });
 
   const before = await reversionState(policyId);
   expect(before.snapshots).toEqual([{ id: lower, restored_at: null }, { id: upper, restored_at: null }]);
@@ -158,6 +163,9 @@ test('uses the receipt-backed snapshot for reversion after merge and preserves v
     SET expires_at = date_trunc('milliseconds', NOW()) WHERE policy_id = $1`, [policyId]);
   await redact(await snapshots());
   expect((await snapshots()).map(snapshot => snapshot.payload_redacted)).toEqual([true, true]);
+  expect((await readReadiness(policyId)).establishmentHistory.recovery).toMatchObject({
+    stateId: 'reverted', snapshotId: lower, rollbackAvailable: false, restoredAt: expect.any(String),
+  });
   expect((await revert(policyId, lower).expect(200)).body).toMatchObject({
     statusId: 'already_reverted', snapshotId: lower,
   });
@@ -168,12 +176,18 @@ test('requires event proof for a claimed snapshot regardless of its stored path'
   const { policyId } = await seed('Initial rollback invalid event', maximum, 801);
   await db.query("UPDATE policy_intent_rollback_snapshots SET restore_path = 'historical/path' WHERE id = $1", [maximum]);
   await db.query("UPDATE policy_intent_migration_events SET metadata = metadata - 'request_fingerprint' WHERE id = 801");
+  await db.query('UPDATE policy_intent_rollback_snapshots SET restored_at = NOW() WHERE id = $1', [maximum]);
   const before = await reversionState(policyId);
+  const readiness = await readReadiness(policyId);
+  expect(readiness.statusId).toBe('initial_intent_establishment_recovery_attention_required');
+  expect(readiness.establishmentHistory.recovery).toMatchObject({
+    stateId: 'rollback_proof_unverified', snapshotId: maximum, rollbackAvailable: false, restoredAt: null,
+  });
   await expectReversionBlocked(policyId, maximum);
   expect(await reversionState(policyId)).toEqual(before);
 });
 
-test('refuses to reactivate the initial intent after it has been replaced', async () => {
+test('does not offer initial reversion after a successor replaced its authority', async () => {
   const { policyId, libraryId } = await seed('Initial rollback inactive authority', 701, 801);
   await db.withTransaction(async client => {
     await client.query('UPDATE policy_intents SET active = FALSE WHERE policy_id = $1', [policyId]);
@@ -190,8 +204,79 @@ test('refuses to reactivate the initial intent after it has been replaced', asyn
       [policyId, successor.id]);
   });
   const before = await reversionState(policyId);
+  expect((await readReadiness(policyId)).establishmentHistory.recovery).toMatchObject({
+    stateId: 'native_intent_inactive', snapshotId: 701, rollbackAvailable: false,
+  });
   await expectReversionBlocked(policyId, 701, 'authority_mismatch');
   expect(await reversionState(policyId)).toEqual(before);
+});
+
+test('preserves the historical manifest through replace and reports the remapped snapshot as unavailable', async () => {
+  const archivedOwner = await seed('Initial rollback owner remap', lower, 801);
+  const archive = await exportArchive();
+  const [archived] = await snapshots();
+  const policyId = 4800;
+  const libraryId = 4700;
+  await setNextId('libraries', libraryId);
+  await setNextId('library_policies', policyId);
+  await restore(archive, 'replace', upper, 4900);
+  expect(await snapshots()).toMatchObject([{ id: upper, policy_id: policyId, migration_event_id: 4900 }]);
+  const [restored] = await snapshots();
+  expect(restored.snapshot_payload).toEqual(archived.snapshot_payload);
+  expect(restored.snapshot_payload).toMatchObject({ policy_id: archivedOwner.policyId, library_id: archivedOwner.libraryId });
+  const before = await reversionState(policyId);
+  const readiness = await readReadiness(policyId);
+  expect(readiness.statusId).toBe('initial_intent_establishment_recovery_attention_required');
+  expect(readiness.establishmentHistory.recovery).toMatchObject({
+    stateId: 'rollback_manifest_invalid', snapshotId: upper, rollbackAvailable: false,
+  });
+  expect(readiness.declaredRuleSummary.stateId).toBe('available');
+  expect(JSON.stringify(readiness)).not.toMatch(/snapshot_payload|request_fingerprint|accepted_by/);
+  await expectReversionBlocked(policyId, upper, 'snapshot_manifest_invalid');
+  expect(await reversionState(policyId)).toEqual(before);
+  expect((await snapshots())[0].snapshot_payload).toEqual(archived.snapshot_payload);
+});
+
+test('uses the same typed owner checks for readiness and reversion', async () => {
+  const { policyId, libraryId } = await seed('Initial rollback typed manifest', 701, 801);
+  const [{ snapshot_payload: manifest }] = await snapshots();
+  const saveManifest = overrides => db.query('UPDATE policy_intent_rollback_snapshots SET snapshot_payload = $1::jsonb WHERE id = 701',
+    [JSON.stringify({ ...manifest, ...overrides })]);
+
+  for (const invalid of [
+    { policy_id: [policyId] },
+    { library_id: `0${libraryId}` },
+    { restore_sections: manifest.restore_sections.slice(1) },
+  ]) {
+    await saveManifest(invalid);
+    expect((await readReadiness(policyId)).establishmentHistory.recovery).toMatchObject({
+      stateId: 'rollback_manifest_invalid', rollbackAvailable: false,
+    });
+    await expectReversionBlocked(policyId, 701, 'snapshot_manifest_invalid');
+  }
+
+  await saveManifest({ policy_id: String(policyId), library_id: String(libraryId) });
+  expect((await readReadiness(policyId)).establishmentHistory.recovery.rollbackAvailable).toBe(true);
+  expect((await revert(policyId, 701).expect(200)).body.statusId).toBe('applied_to_compatibility');
+});
+
+test('does not return another policy’s declared rules or snapshot references', async () => {
+  const first = await seed('Initial rollback source scope', lower, 801);
+  const second = await seed('Initial rollback other scope', upper, 802);
+  await db.query('DELETE FROM policy_initial_intent_establishments WHERE policy_id = $1', [second.policyId]);
+  const [, other] = await snapshots();
+  await db.query('UPDATE policy_initial_intent_establishments SET intent_id = $2 WHERE policy_id = $1',
+    [first.policyId, other.intent_id]);
+  const wrongIntent = await readReadiness(first.policyId);
+  expect(wrongIntent.establishmentHistory.establishment.intentId).toBeNull();
+  expect(wrongIntent.establishmentHistory.recovery.stateId).toBe('rollback_proof_unverified');
+  expect(wrongIntent.declaredRuleSummary).toMatchObject({ stateId: 'invalid', declaredIntent: null });
+  await db.query('UPDATE policy_initial_intent_establishments SET rollback_snapshot_id = $2 WHERE policy_id = $1',
+    [first.policyId, upper]);
+  const wrongSnapshot = await readReadiness(first.policyId);
+  expect(wrongSnapshot.establishmentHistory.recovery).toEqual({
+    stateId: 'rollback_snapshot_missing', snapshotId: null, expiresAt: null, restoredAt: null, rollbackAvailable: false,
+  });
 });
 
 test('uses each exact establishment receipt including an inactive adjacent intent', async () => {

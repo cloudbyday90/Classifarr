@@ -19,6 +19,9 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Initial establishment rollback readiness** — Report maintenance review
+  when a restored snapshot lacks verified evidence or its saved manifest
+  belongs to different policy or library IDs.
 - **Initial establishment reversion** — Require the exact saved receipt and
   creation event before reverting a snapshot or replaying its result.
 - **Initial establishment rollback provenance** — Retention attributes

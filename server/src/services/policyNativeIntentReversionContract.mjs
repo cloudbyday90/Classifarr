@@ -168,15 +168,7 @@ function isSnapshotExpired(snapshot, now) {
   return !Number.isFinite(expiresAt) || expiresAt <= now.getTime();
 }
 
-function validateSnapshotManifest({ snapshot, policy }) {
-  if (snapshot?.payload_redacted !== false) {
-    return {
-      ok: false,
-      riskId: POLICY_NATIVE_INTENT_REVERSION_RISK_IDS.SNAPSHOT_NOT_RESTORABLE,
-      message: 'Rollback snapshot payload is unavailable for safe reversion.',
-    };
-  }
-
+function isLegacyManifestValid({ snapshot, policy }) {
   const payload = parseJsonObject(snapshot.snapshot_payload);
   const restoreSections = new Set(asArray(payload.restore_sections).map(normalizeString));
   const hasRequiredSections = REQUIRED_RESTORE_SECTION_IDS
@@ -187,7 +179,22 @@ function validateSnapshotManifest({ snapshot, policy }) {
     Array.isArray(payload.presets) &&
     hasOwn(payload, 'routing_target');
 
-  if (!hasRequiredSections || !policyMatches || !libraryMatches || !validShape) {
+  return hasRequiredSections && policyMatches && libraryMatches && validShape;
+}
+
+function validateSnapshotManifest({ snapshot, policy }) {
+  if (snapshot?.payload_redacted !== false) {
+    return {
+      ok: false,
+      riskId: POLICY_NATIVE_INTENT_REVERSION_RISK_IDS.SNAPSHOT_NOT_RESTORABLE,
+      message: 'Rollback snapshot payload is unavailable for safe reversion.',
+    };
+  }
+
+  const validManifest = snapshot.requires_establishment_proof === true
+    ? snapshot.establishment_manifest_valid === true
+    : isLegacyManifestValid({ snapshot, policy });
+  if (!validManifest) {
     return {
       ok: false,
       riskId: POLICY_NATIVE_INTENT_REVERSION_RISK_IDS.SNAPSHOT_MANIFEST_INVALID,

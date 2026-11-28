@@ -10,6 +10,7 @@
 
 import { jest } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
+import { POLICY_ROLLBACK_PAYLOAD_SECTION_IDS } from '../../services/policyRollbackSnapshotWindow.mjs';
 import { createIntegrationDatabaseModuleMock } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
@@ -82,16 +83,17 @@ async function establishNativeIntent({ policyId, libraryId }) {
        policy_id,
        event_type,
        actor_type,
+       actor_id,
        source_version,
        target_version,
        reason_code,
        summary,
        metadata
      )
-     VALUES ($1, $2, 'initial_intent_established', 'operator', NULL, 1,
-       'integration_test', 'Initial establishment integration fixture.', '{}'::jsonb)
+     VALUES ($1, $2, 'initial_intent_established', 'operator', 7, NULL, 1,
+       'operator_declared_initial_intent', 'Initial establishment integration fixture.', $3::jsonb)
      RETURNING id`,
-    [intentId, policyId]
+    [intentId, policyId, JSON.stringify({ authority_source_id: 'operator_declared_intent', request_fingerprint: 'a'.repeat(64) })]
   );
     const snapshotResult = await client.query(
     `INSERT INTO policy_intent_rollback_snapshots (
@@ -103,9 +105,16 @@ async function establishNativeIntent({ policyId, libraryId }) {
        restore_path,
        expires_at
      )
-     VALUES ($1, $2, 1, '{}'::jsonb, FALSE, $3, NOW() + INTERVAL '14 days')
+     VALUES ($1, $2, 1, $4::jsonb, FALSE, $3, NOW() + INTERVAL '14 days')
      RETURNING id`,
-    [intentId, policyId, `policy/integration/rollback/${policyId}`]
+    [intentId, policyId, `policy/integration/rollback/${policyId}`, JSON.stringify({
+      policy_id: policyId,
+      library_id: libraryId,
+      restore_sections: Object.values(POLICY_ROLLBACK_PAYLOAD_SECTION_IDS),
+      legacy_policy: {},
+      presets: [],
+      routing_target: null,
+    })]
   );
     const establishmentResult = await client.query(
     `INSERT INTO policy_initial_intent_establishments (

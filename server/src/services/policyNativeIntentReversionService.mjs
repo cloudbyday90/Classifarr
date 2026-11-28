@@ -98,7 +98,6 @@ async function applyPolicyNativeIntentReversion({
       const snapshot = await lockRollbackSnapshotForNativeIntentReversion(client, {
         snapshotId: normalizedSnapshotId,
         policyId: Number(policy.id),
-        libraryId: Number(policy.library_id),
       });
       if (!snapshot || normalizeDatabaseBigintId(snapshot.id) !== normalizedSnapshotId) {
         return buildPolicyNativeIntentReversionResult({
