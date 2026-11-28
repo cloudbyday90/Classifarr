@@ -8,6 +8,10 @@
 
 import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
 import {
+  CONVERSION_ACTOR_SOURCE_BY_TYPE,
+  CONVERSION_CAPTURE_ACTOR_SOURCES,
+} from './policyConversionRollbackCapture.mjs';
+import {
   buildRebuildCaptureEvidence,
   hasRebuildRollbackAcceptance,
   REBUILD_CAPTURE_REASON,
@@ -105,20 +109,37 @@ async function findRollbackSnapshotAuditEvent({ client, snapshot }) {
        actor_type,
        actor_id,
        reason_code,
-       metadata
+       metadata,
+       capture.is_conversion,
+       metadata ->> 'snapshotId' AS capture_snapshot_id
      FROM policy_intent_migration_events
+     CROSS JOIN LATERAL (
+       SELECT ($8::jsonb ? actor_type::text OR
+         COALESCE((metadata ->> 'actorSourceId') = ANY($9::text[]), FALSE)) AS is_conversion
+     ) AS capture
+     CROSS JOIN LATERAL (
+       SELECT CASE WHEN capture.is_conversion AND metadata ? 'retentionSnapshotId'
+         THEN metadata -> 'retentionSnapshotId'
+         ELSE metadata -> 'snapshotId'
+       END AS value
+     ) AS reference
      WHERE policy_id = $1
        AND intent_id = $2
        AND event_type = 'rollback_snapshot_created'
-       AND reason_code <> $6
+       AND (capture.is_conversion OR reason_code <> $6)
        AND target_version = $3
-       AND metadata ->> 'snapshotId' = $4::text
+       AND reference.value #>> '{}' = $4::text
        AND (
-         jsonb_typeof(metadata -> 'snapshotId') = 'string'
-         OR ($5::boolean AND jsonb_typeof(metadata -> 'snapshotId') = 'number')
+         jsonb_typeof(reference.value) = 'string'
+         OR ($5::boolean AND jsonb_typeof(reference.value) = 'number')
        )
-     ORDER BY created_at DESC, id DESC
-     LIMIT 1`,
+       AND (NOT capture.is_conversion OR (
+         source_version IS NULL AND ($8::jsonb -> actor_type::text) = (metadata -> 'actorSourceId')
+         AND (actor_id IS NULL OR actor_id > 0)
+         AND $7::text <> '' AND metadata -> 'restorePath' = to_jsonb($7::text)
+       ))
+     ORDER BY capture.is_conversion DESC, created_at DESC, id DESC
+     LIMIT 2`,
     [
       snapshot.policy_id,
       snapshot.intent_id,
@@ -126,10 +147,17 @@ async function findRollbackSnapshotAuditEvent({ client, snapshot }) {
       snapshot.id,
       typeof snapshot.id === 'number',
       REBUILD_CAPTURE_REASON,
+      snapshot.restore_path,
+      JSON.stringify(CONVERSION_ACTOR_SOURCE_BY_TYPE),
+      CONVERSION_CAPTURE_ACTOR_SOURCES,
     ]
   );
 
-  return firstRow(result);
+  const event = firstRow(result);
+  if (!event?.is_conversion) return event;
+  const originalId = canonicalDatabaseBigintId(event.metadata?.snapshotId);
+  return originalId !== null && originalId === event.capture_snapshot_id &&
+    result.rows[1]?.is_conversion !== true ? event : null;
 }
 
 async function redactRollbackSnapshotPayload({ client, snapshotId, now, marker }) {

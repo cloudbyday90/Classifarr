@@ -4,10 +4,10 @@ import { persistMetadataProviderConfig } from './metadataProviderConfigStore.mjs
 import { ValidationError } from '../utils/appError.mjs';
 import { restoredReference, restoredArrReference } from './backupRestoreReferences.mjs';
 import {
-  getRestoredRebuildRetentionBinding,
+  getRestoredRollbackRetentionBinding,
   indexRestoredRollbackSnapshots,
-  restoredRebuildCaptureMetadataSql,
-} from './policyRollbackSnapshotRebuildProvenance.mjs';
+  restoredRollbackCaptureMetadataSql,
+} from './policyRollbackSnapshotRestoreBinding.mjs';
 export { restoreRadarrConfigs, restoreSonarrConfigs, restoreLabelPresets } from './backupRestoreDestinations.mjs';
 
 const LIBRARY_ALLOWED_COLUMNS = ['name', 'media_type', 'media_server_id', 'external_id', 'is_active',
@@ -437,7 +437,7 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     );
     if (keys.length === 0) continue;
 
-    const binding = getRestoredRebuildRetentionBinding(event, restoredRollbackSnapshots);
+    const binding = getRestoredRollbackRetentionBinding(event, restoredRollbackSnapshots);
     if (binding !== undefined && !keys.includes('metadata')) {
       keys.push('metadata');
       values.push('{}');
@@ -446,7 +446,7 @@ export async function restoreNativePolicyIntentStorage(client, nativeStorage = {
     if (binding !== undefined) {
       const metadataIndex = keys.indexOf('metadata');
       values.push(JSON.stringify(binding));
-      placeholders[metadataIndex] = restoredRebuildCaptureMetadataSql(
+      placeholders[metadataIndex] = restoredRollbackCaptureMetadataSql(
         placeholders[metadataIndex], `$${values.length + 2}`,
       );
     }

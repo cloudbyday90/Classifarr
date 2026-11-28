@@ -71,9 +71,28 @@ function readyDryRun(now = '2026-07-01T12:00:00.000Z') {
   });
 }
 
+function createRollbackWriteAcknowledgement(sql, params) {
+  if (sql.includes('INSERT INTO policy_intent_rollback_snapshots')) {
+    return {
+      id: '9007199254740993', intent_id: params[0], policy_id: params[1], snapshot_version: params[2],
+      restore_path: params[4], payload_redacted: false,
+    };
+  }
+  if (sql.includes('INSERT INTO policy_intent_migration_events') && params[2] === 'rollback_snapshot_created') {
+    const metadata = JSON.parse(params[8]);
+    return {
+      id: 502, intent_id: params[0], policy_id: params[1], event_type: params[2], actor_type: params[3],
+      actor_id: params[4], source_version: null, target_version: params[5], reason_code: params[6],
+      snapshot_id_text: String(metadata.snapshotId), snapshot_id_type: typeof metadata.snapshotId,
+      restore_path: metadata.restorePath, actor_source_id: metadata.actorSourceId, has_restored_link: false,
+    };
+  }
+  return null;
+}
+
 function createApplyClient({ failOnRules = false } = {}) {
   const client = {
-    query: jest.fn(async (sql) => {
+    query: jest.fn(async (sql, params) => {
       if (failOnRules && String(sql).includes('INSERT INTO policy_intent_rules')) {
         throw new Error('rule insert failed');
       }
@@ -90,7 +109,8 @@ function createApplyClient({ failOnRules = false } = {}) {
         return { rows: [{ id: '501' }], rowCount: 1 };
       }
 
-      return { rows: [], rowCount: 1 };
+      const acknowledgement = createRollbackWriteAcknowledgement(String(sql), params);
+      return { rows: acknowledgement ? [acknowledgement] : [], rowCount: 1 };
     }),
   };
 
@@ -111,7 +131,7 @@ function createTransactionAwareApplyDatabase() {
     ['INSERT INTO policy_intent_rollback_snapshots', 'rollback_snapshot_inserted'],
   ];
   const client = {
-    query: jest.fn(async (sql) => {
+    query: jest.fn(async (sql, params) => {
       const normalizedSql = String(sql);
 
       if (normalizedSql === 'BEGIN') {
@@ -152,7 +172,8 @@ function createTransactionAwareApplyDatabase() {
         return { rows: [{ id: '501' }], rowCount: 1 };
       }
 
-      return { rows: [], rowCount: 1 };
+      const acknowledgement = createRollbackWriteAcknowledgement(normalizedSql, params);
+      return { rows: acknowledgement ? [acknowledgement] : [], rowCount: 1 };
     }),
     release: jest.fn(),
   };
@@ -289,6 +310,23 @@ describe('policyPostUpgradeApplyGate', () => {
         guardReasonId: 'rollback_reconciliation_hold',
       })],
     }));
+    expect(client.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO policy_intents'),
+      expect.anything(),
+    );
+  });
+
+  test('refuses a write revision different from the admitted rollback plan', async () => {
+    const client = createApplyClient();
+    const now = '2026-07-01T12:00:00.000Z';
+    const result = await applyPolicyPostUpgradeApplyGate({
+      dbClient: { withTransaction: work => work(client) },
+      dryRun: readyDryRun(now),
+      policies: [policy()],
+      now,
+      targetVersion: 2,
+    });
+    expect(result).toMatchObject({ statusId: 'failed_rolled_back', applied: false });
     expect(client.query).not.toHaveBeenCalledWith(
       expect.stringContaining('INSERT INTO policy_intents'),
       expect.anything(),

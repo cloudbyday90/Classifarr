@@ -105,3 +105,9 @@ library rebuild creation events. Fresh redaction can use that reference
 after the snapshot ID changes. Earlier redaction markers and event
 metadata record the IDs at the time of redaction.
 [Restore provenance outcome](rollback-snapshot-restore-provenance-outcome.md)
+
+Post-upgrade conversion and native-intent reconciliation save the exact
+snapshot ID on their creation event inside the conversion transaction.
+Restore qualifies that producer's snapshot and event before it assigns
+the retention reference.
+[Conversion capture provenance outcome](conversion-rollback-snapshot-identity-outcome.md)

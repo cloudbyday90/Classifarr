@@ -21,6 +21,12 @@ import {
 } from './policyPostUpgradeDryRun.mjs';
 import { lockPolicyNativeIntentAuthority } from './policyNativeIntentAuthorityLock.mjs';
 import { POLICY_CONVERSION_ACTOR_SOURCE_IDS } from './policyConversionActorSources.mjs';
+import { parseCanonicalDatabaseInt32Id } from './databaseIntegerValues.mjs';
+import {
+  CONVERSION_CAPTURE_EVENT_RETURNING_SQL,
+  insertConversionRollbackSnapshot,
+  verifyConversionCaptureEvent,
+} from './policyConversionRollbackCapture.mjs';
 
 const POLICY_POST_UPGRADE_APPLY_GATE_VERSION = 'policy.post_upgrade_apply_gate.v1';
 const DEFAULT_TARGET_VERSION = 1;
@@ -490,7 +496,7 @@ async function insertMigrationEvent({
   actorSourceId = null,
   targetVersion = DEFAULT_TARGET_VERSION,
 }) {
-  await client.query(
+  return client.query(
     `INSERT INTO policy_intent_migration_events (
        intent_id,
        policy_id,
@@ -503,7 +509,8 @@ async function insertMigrationEvent({
        summary,
        metadata
      )
-     VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9::jsonb)`,
+     VALUES ($1, $2, $3, $4, $5, NULL, $6, $7, $8, $9::jsonb)
+     ${eventType === 'rollback_snapshot_created' ? CONVERSION_CAPTURE_EVENT_RETURNING_SQL : ''}`,
     [
       intentId,
       policyId,
@@ -517,37 +524,6 @@ async function insertMigrationEvent({
         ...asObject(metadata),
         ...(normalizeString(actorSourceId) ? { actorSourceId: normalizeString(actorSourceId) } : {}),
       }),
-    ]
-  );
-}
-
-async function insertRollbackSnapshot({ client, intentId, policy, contract, step, appliedAt }) {
-  const payload = buildRollbackSnapshotPayload({
-    policy,
-    contract,
-    step,
-    appliedAt,
-  });
-  const expiresAt = step.rollbackSnapshot?.expiresAt || addDays(appliedAt, DEFAULT_ROLLBACK_WINDOW_DAYS);
-
-  await client.query(
-    `INSERT INTO policy_intent_rollback_snapshots (
-       intent_id,
-       policy_id,
-       snapshot_version,
-       snapshot_payload,
-       payload_redacted,
-       restore_path,
-       expires_at
-     )
-     VALUES ($1, $2, $3, $4::jsonb, FALSE, $5, $6)`,
-    [
-      intentId,
-      policy.id,
-      DEFAULT_TARGET_VERSION,
-      JSON.stringify(payload),
-      step.rollbackSnapshot?.restorePath || `policy/post-upgrade/rollback/policies/${policy.id}/v${DEFAULT_TARGET_VERSION}`,
-      expiresAt,
     ]
   );
 }
@@ -753,6 +729,13 @@ async function applyReadyStep({
     };
   }
 
+  const plannedVersion = step.rollbackSnapshot?.snapshotVersion;
+  const captureVersion = parseCanonicalDatabaseInt32Id(targetVersion);
+  if (captureVersion === null ||
+      (plannedVersion != null && parseCanonicalDatabaseInt32Id(plannedVersion) !== captureVersion)) {
+    throw new Error('Conversion rollback snapshot revision did not match its plan.');
+  }
+
   const contractResolution = buildPolicyNativeIntentConversionContract({ policy, now: appliedAt });
   const contract = contractResolution.contract;
   const materializationEligibility = buildNativeIntentMaterializationEligibility(contract);
@@ -800,8 +783,16 @@ async function applyReadyStep({
     actorSourceId: auditContext.actorSourceId,
     targetVersion,
   });
-  await insertRollbackSnapshot({ client, intentId, policy, contract, step, appliedAt });
-  await insertMigrationEvent({
+  const rollbackSnapshot = await insertConversionRollbackSnapshot({
+    client,
+    intentId,
+    policyId: policy.id,
+    targetVersion,
+    payload: buildRollbackSnapshotPayload({ policy, contract, step, appliedAt }),
+    restorePath: step.rollbackSnapshot?.restorePath || `policy/post-upgrade/rollback/policies/${policy.id}/v${targetVersion}`,
+    expiresAt: step.rollbackSnapshot?.expiresAt || addDays(appliedAt, DEFAULT_ROLLBACK_WINDOW_DAYS),
+  });
+  const captureEvent = await insertMigrationEvent({
     client,
     intentId,
     policyId: policy.id,
@@ -810,10 +801,11 @@ async function applyReadyStep({
     actorId: auditContext.actorId,
     reasonCode: auditContext.reasonCode,
     summary: `Rollback snapshot created before ${auditContext.summaryPrefix.toLowerCase()}.`,
-    metadata: { restorePath: step.rollbackSnapshot?.restorePath ?? null },
+    metadata: { restorePath: rollbackSnapshot.restorePath, snapshotId: rollbackSnapshot.id },
     actorSourceId: auditContext.actorSourceId,
     targetVersion,
   });
+  verifyConversionCaptureEvent(captureEvent, rollbackSnapshot, auditContext);
   const rulesInserted = await insertIntentRules({ client, intentId, contract });
   await insertRoutingTarget({ client, intentId, policy, step });
   const templateApplicationsInserted = await insertTemplateApplications({ client, intentId, contract });

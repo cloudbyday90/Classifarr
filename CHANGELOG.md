@@ -19,6 +19,9 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Conversion rollback provenance** — Post-upgrade conversion and native
+  intent reconciliation record the exact rollback snapshot ID. Backup
+  restore preserves its verified link for later redaction.
 - **Rollback snapshot restore** — Fresh redaction retains verified
   creation-event provenance when configuration restore remaps rebuild
   snapshot IDs.
