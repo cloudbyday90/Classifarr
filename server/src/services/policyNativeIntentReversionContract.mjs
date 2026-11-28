@@ -233,6 +233,14 @@ function determineReversionTarget({ snapshot, intents = [] } = {}) {
     };
   }
 
+  if (snapshot.requires_establishment_proof === true) {
+    return {
+      ok: false,
+      riskId: POLICY_NATIVE_INTENT_REVERSION_RISK_IDS.AUTHORITY_MISMATCH,
+      message: 'The established native intent must still be active for initial reversion.',
+    };
+  }
+
   if (
     snapshotIntent.active === false &&
     activeIntentId !== null &&

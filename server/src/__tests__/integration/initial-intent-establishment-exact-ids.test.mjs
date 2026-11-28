@@ -166,6 +166,9 @@ test('preserves the BIGINT maximum in native create, replay and readiness', asyn
   expect(original.body.establishment).toMatchObject({ ...ids, replayed: true });
   await expectStoredReceipt(created.body.id, ids);
   await expectReadiness(created.body.id, ids, 'maximum');
+  const reverted = await request(app()).post(`${basePath}/${created.body.id}/native-intent-rollbacks/${maximum}/apply`)
+    .auth(adminToken, { type: 'bearer' }).send({ reason_code: 'operator_reviewed' }).expect(200);
+  expect(reverted.body).toMatchObject({ statusId: 'applied_to_compatibility', snapshotId: maximum });
   const { rows: [snapshot] } = await db.query(
     'SELECT expires_at FROM policy_intent_rollback_snapshots WHERE id = $1', [maximum],
   );

@@ -2,12 +2,18 @@
 
 import { afterEach, beforeAll, expect, jest, test } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
+import express from 'express';
+import request from 'supertest';
 import { createPolicyEngineIntegrationFixture } from '../setup/createPolicyEngineIntegrationFixture.mjs';
-import { createIntegrationDatabaseModuleMock } from './setup.mjs';
+import { createIntegrationDatabaseModuleMock, createIntegrationTestApp } from './setup.mjs';
 
 jest.unstable_mockModule('../../config/database.mjs', () => createIntegrationDatabaseModuleMock());
 
 const { default: db } = await import('../../config/database.mjs');
+const { authenticateToken } = await import('../../middleware/auth.mjs');
+const { registerPolicyInitialIntentEstablishmentReadinessRoutes } = await import('../../routes/policiesRouteInitialIntentEstablishmentReadiness.mjs');
+const { registerPolicyNativeIntentReversionRoutes } = await import('../../routes/policiesRouteNativeIntentReversion.mjs');
+const { generateAccessToken } = await import('../../services/auth.mjs');
 const { applyPolicyInitialIntentEstablishment } = await import('../../services/policyInitialIntentEstablishmentService.mjs');
 const { clearExistingConfig, restoreAllTables } = await import('../../services/backupRestore.mjs');
 const { collectBackupSnapshot } = await import('../../services/backupSnapshot.mjs');
@@ -18,9 +24,16 @@ const upper = '9007199254740993';
 const maximum = '9223372036854775807';
 const logger = { info: jest.fn(), debug: jest.fn(), error: jest.fn() };
 const retention = new PolicyRollbackSnapshotRetentionService({ db, logger, lockKey: 2007 });
+let admin;
 
 beforeAll(async () => {
   await db.query("INSERT INTO users (id, username, password_hash, role) VALUES (7, 'retention-admin', 'synthetic', 'admin')");
+  const token = await generateAccessToken({ id: 7, username: 'retention-admin', role: 'admin' });
+  const router = express.Router();
+  registerPolicyInitialIntentEstablishmentReadinessRoutes(router, { db, logger });
+  registerPolicyNativeIntentReversionRoutes(router, { db, logger });
+  const app = createIntegrationTestApp({ basePath: '/api/policies', router, middleware: [authenticateToken] });
+  admin = request.agent(app).auth(token, { type: 'bearer' });
 });
 afterEach(() => db.withTransaction(clearExistingConfig));
 
@@ -89,6 +102,97 @@ async function restore(archive, mode, firstSnapshotId, firstEventId) {
   await setNextId('policy_intent_migration_events', firstEventId);
   return db.withTransaction(client => restoreAllTables(client, archive, mode));
 }
+
+function revert(policyId, snapshotId) {
+  return admin.post(`/api/policies/${policyId}/native-intent-rollbacks/${snapshotId}/apply`)
+    .send({ reason_code: 'operator_reviewed' });
+}
+
+async function expectReversionBlocked(policyId, snapshotId, riskId = 'snapshot_not_restorable') {
+  const { body } = await revert(policyId, snapshotId).expect(409);
+  expect(body).toMatchObject({
+    code: 'POLICY_NATIVE_INTENT_REVERSION_BLOCKED',
+    reversion: { snapshotId, validation: { issues: [{ riskId }] } },
+  });
+}
+
+async function reversionState(policyId) {
+  const [intents, snapshots, events, holds] = await Promise.all([
+    db.query('SELECT id, active, replaced_by_intent_id FROM policy_intents WHERE policy_id = $1 ORDER BY id', [policyId]),
+    db.query('SELECT id, restored_at FROM policy_intent_rollback_snapshots WHERE policy_id = $1 ORDER BY id', [policyId]),
+    db.query(`SELECT id, intent_id, metadata FROM policy_intent_migration_events
+      WHERE policy_id = $1 AND event_type = 'rollback_applied' ORDER BY id`, [policyId]),
+    db.query('SELECT hold_state, source_event_id FROM policy_native_intent_reconciliation_holds WHERE policy_id = $1', [policyId]),
+  ]);
+  return { intents: intents.rows, snapshots: snapshots.rows, events: events.rows, holds: holds.rows };
+}
+
+test('uses the receipt-backed snapshot for reversion after merge and preserves verified completed replay', async () => {
+  const { policyId } = await seed('Initial rollback command', lower, 801);
+  await restore(await exportArchive(), 'merge', upper, 1800);
+  const listed = await admin.get(`/api/policies/${policyId}/native-intent/initial-establishment/readiness`).expect(200);
+  expect(listed.body.establishmentHistory.recovery).toMatchObject({ snapshotId: lower, rollbackAvailable: true });
+
+  const before = await reversionState(policyId);
+  expect(before.snapshots).toEqual([{ id: lower, restored_at: null }, { id: upper, restored_at: null }]);
+  await expectReversionBlocked(policyId, upper);
+  expect(await reversionState(policyId)).toEqual(before);
+
+  await db.query('UPDATE policy_intent_rollback_snapshots SET restored_at = NOW() WHERE id = $1', [upper]);
+  const history = await reversionState(policyId);
+  await expectReversionBlocked(policyId, upper);
+  expect(await reversionState(policyId)).toEqual(history);
+
+  expect((await revert(policyId, lower).expect(200)).body).toMatchObject({
+    statusId: 'applied_to_compatibility', snapshotId: lower,
+  });
+  const applied = await reversionState(policyId);
+  expect(applied.intents).toEqual([{ ...before.intents[0], active: false }]);
+  expect(applied.snapshots).toEqual([{ id: lower, restored_at: expect.any(Date) }, history.snapshots[1]]);
+  expect(applied.events).toEqual([{
+    id: expect.any(Number), intent_id: before.intents[0].id, metadata: expect.objectContaining({ snapshotId: lower }),
+  }]);
+  expect(applied.holds).toEqual([{ hold_state: 'active', source_event_id: applied.events[0].id }]);
+
+  await db.query(`UPDATE policy_intent_rollback_snapshots
+    SET expires_at = date_trunc('milliseconds', NOW()) WHERE policy_id = $1`, [policyId]);
+  await redact(await snapshots());
+  expect((await snapshots()).map(snapshot => snapshot.payload_redacted)).toEqual([true, true]);
+  expect((await revert(policyId, lower).expect(200)).body).toMatchObject({
+    statusId: 'already_reverted', snapshotId: lower,
+  });
+  expect(await reversionState(policyId)).toEqual(applied);
+});
+
+test('requires event proof for a claimed snapshot regardless of its stored path', async () => {
+  const { policyId } = await seed('Initial rollback invalid event', maximum, 801);
+  await db.query("UPDATE policy_intent_rollback_snapshots SET restore_path = 'historical/path' WHERE id = $1", [maximum]);
+  await db.query("UPDATE policy_intent_migration_events SET metadata = metadata - 'request_fingerprint' WHERE id = 801");
+  const before = await reversionState(policyId);
+  await expectReversionBlocked(policyId, maximum);
+  expect(await reversionState(policyId)).toEqual(before);
+});
+
+test('refuses to reactivate the initial intent after it has been replaced', async () => {
+  const { policyId, libraryId } = await seed('Initial rollback inactive authority', 701, 801);
+  await db.withTransaction(async client => {
+    await client.query('UPDATE policy_intents SET active = FALSE WHERE policy_id = $1', [policyId]);
+    const { rows: [successor] } = await client.query(`
+      INSERT INTO policy_intents (policy_id, library_id, schema_version, intent_version,
+        active, source, inference_state, review_behavior, validation_status)
+      VALUES ($1, $2, 1, 2, TRUE, 'native_intent', 'inferred', '{}', 'valid') RETURNING id`, [policyId, libraryId]);
+    await client.query(`
+      INSERT INTO policy_intent_rules (intent_id, intent_role, collection, signal_type, operator,
+        values, constraint_mode, semantics, source, inference_state, sort_order)
+      VALUES ($1, 'purpose', 'purpose', 'genres', 'require_any', '{"require_any":["Animation"]}',
+        'advisory', 'identity', 'operator_declared_intent', 'inferred', 0)`, [successor.id]);
+    await client.query('UPDATE policy_intents SET replaced_by_intent_id = $2 WHERE policy_id = $1 AND intent_version = 1',
+      [policyId, successor.id]);
+  });
+  const before = await reversionState(policyId);
+  await expectReversionBlocked(policyId, 701, 'authority_mismatch');
+  expect(await reversionState(policyId)).toEqual(before);
+});
 
 test('uses each exact establishment receipt including an inactive adjacent intent', async () => {
   const first = await seed('Lower initial rollback', lower, upper);

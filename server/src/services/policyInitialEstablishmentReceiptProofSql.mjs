@@ -1,5 +1,7 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0 */
 
+export const INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX = 'policy/initial-intent-establishment/rollback/';
+
 // Shared joins for queries with a receipt aliased as establishment.
 export const INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL = `
        JOIN policy_intents established_intent

@@ -6,6 +6,11 @@
  * See LICENSE file for details.
  */
 
+import {
+  INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL,
+  INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX,
+} from './policyInitialEstablishmentReceiptProofSql.mjs';
+
 function firstRow(result) {
   return Array.isArray(result?.rows) ? result.rows[0] || null : null;
 }
@@ -22,24 +27,39 @@ async function lockPolicyForNativeIntentReversion(client, policyId) {
   return firstRow(result);
 }
 
-async function lockRollbackSnapshotForNativeIntentReversion(client, { snapshotId, policyId }) {
+async function lockRollbackSnapshotForNativeIntentReversion(client, { snapshotId, policyId, libraryId }) {
   const result = await client.query(
     `SELECT
-       id,
-       intent_id,
-       policy_id,
-       snapshot_version,
-       snapshot_payload,
-       payload_redacted,
-       restore_path,
-       expires_at,
-       created_at,
-       restored_at
-     FROM policy_intent_rollback_snapshots
-     WHERE id = $1
-       AND policy_id = $2
-     FOR UPDATE`,
-    [snapshotId, policyId]
+       snapshot.id,
+       snapshot.intent_id,
+       snapshot.policy_id,
+       snapshot.snapshot_version,
+       snapshot.snapshot_payload,
+       snapshot.payload_redacted,
+       snapshot.restore_path,
+       snapshot.expires_at,
+       snapshot.created_at,
+       snapshot.restored_at,
+       (starts_with(snapshot.restore_path, $4) OR EXISTS (
+         SELECT 1 FROM policy_initial_intent_establishments claim
+         WHERE claim.rollback_snapshot_id = snapshot.id
+       )) AS requires_establishment_proof,
+       EXISTS (
+         SELECT 1 FROM policy_initial_intent_establishments establishment
+         ${INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL}
+         WHERE establishment.rollback_snapshot_id = snapshot.id
+           AND establishment.policy_id = snapshot.policy_id
+           AND establishment.library_id = $3
+           AND establishment.intent_id = snapshot.intent_id
+           AND establishment.state = 'established'
+           AND establishment.accepted_by > 0
+           AND snapshot.snapshot_version = 1
+       ) AS establishment_proof_verified
+     FROM policy_intent_rollback_snapshots snapshot
+     WHERE snapshot.id = $1
+       AND snapshot.policy_id = $2
+     FOR UPDATE OF snapshot`,
+    [snapshotId, policyId, libraryId, INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX]
   );
 
   return firstRow(result);

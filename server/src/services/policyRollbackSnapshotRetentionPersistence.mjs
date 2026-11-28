@@ -7,7 +7,10 @@
  */
 
 import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
-import { INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL } from './policyInitialEstablishmentReceiptProofSql.mjs';
+import {
+  INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL,
+  INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX,
+} from './policyInitialEstablishmentReceiptProofSql.mjs';
 import {
   CONVERSION_ACTOR_SOURCE_BY_TYPE,
   CONVERSION_CAPTURE_ACTOR_SOURCES,
@@ -102,7 +105,7 @@ async function findRebuildCaptureEvent(client, snapshot, evidence) {
 }
 
 async function findRollbackSnapshotAuditEvent({ client, snapshot }) {
-  const initialPath = snapshot.restore_path?.startsWith('policy/initial-intent-establishment/rollback/') === true;
+  const initialPath = snapshot.restore_path?.startsWith(INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX) === true;
   if (!initialPath && hasRebuildRollbackAcceptance(snapshot.snapshot_payload)) {
     const evidence = buildRebuildCaptureEvidence(snapshot.snapshot_payload);
     return evidence ? findRebuildCaptureEvent(client, snapshot, evidence) : null;

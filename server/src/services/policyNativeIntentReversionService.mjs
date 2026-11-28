@@ -98,6 +98,7 @@ async function applyPolicyNativeIntentReversion({
       const snapshot = await lockRollbackSnapshotForNativeIntentReversion(client, {
         snapshotId: normalizedSnapshotId,
         policyId: Number(policy.id),
+        libraryId: Number(policy.library_id),
       });
       if (!snapshot || normalizeDatabaseBigintId(snapshot.id) !== normalizedSnapshotId) {
         return buildPolicyNativeIntentReversionResult({
@@ -107,6 +108,17 @@ async function applyPolicyNativeIntentReversion({
           snapshotId: normalizedSnapshotId,
           riskId: POLICY_NATIVE_INTENT_REVERSION_RISK_IDS.SNAPSHOT_NOT_FOUND,
           message: 'Rollback snapshot does not belong to the current policy.',
+        });
+      }
+
+      if (snapshot.requires_establishment_proof === true && snapshot.establishment_proof_verified !== true) {
+        return buildPolicyNativeIntentReversionResult({
+          statusId: POLICY_NATIVE_INTENT_REVERSION_STATUS_IDS.BLOCKED_BY_SNAPSHOT,
+          evaluatedAt,
+          policyId: Number(policy.id),
+          snapshotId: normalizedSnapshotId,
+          riskId: POLICY_NATIVE_INTENT_REVERSION_RISK_IDS.SNAPSHOT_NOT_RESTORABLE,
+          message: 'Rollback snapshot is missing verified initial establishment evidence.',
         });
       }
 

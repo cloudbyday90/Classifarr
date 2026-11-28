@@ -19,6 +19,8 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Initial establishment reversion** — Require the exact saved receipt and
+  creation event before reverting a snapshot or replaying its result.
 - **Initial establishment rollback provenance** — Retention attributes
   expired snapshots to their verified creation event. Backup restore
   rejects ambiguous establishment references before writing.

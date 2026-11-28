@@ -9,6 +9,7 @@
  */
 
 import { normalizeDatabaseBigintId } from './databaseIntegerValues.mjs';
+import { INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX } from './policyInitialEstablishmentReceiptProofSql.mjs';
 
 function firstRow(result) {
   return Array.isArray(result?.rows) ? result.rows[0] || null : null;
@@ -392,7 +393,7 @@ async function insertInitialIntentRollbackSnapshot({
       intentId,
       policy.id,
       JSON.stringify(payload),
-      `policy/initial-intent-establishment/rollback/policies/${policy.id}/v1`,
+      `${INITIAL_ESTABLISHMENT_ROLLBACK_PATH_PREFIX}policies/${policy.id}/v1`,
       expiresAt,
     ]
   );
