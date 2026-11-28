@@ -111,3 +111,8 @@ snapshot ID on their creation event inside the conversion transaction.
 Restore qualifies that producer's snapshot and event before it assigns
 the retention reference.
 [Conversion capture provenance outcome](conversion-rollback-snapshot-identity-outcome.md)
+
+Initial-establishment snapshots use the receipt's verified event link.
+Configuration restore checks that the source receipt and owners can map
+unambiguously before it imports them.
+[Initial-establishment retention outcome](initial-establishment-rollback-retention-outcome.md)

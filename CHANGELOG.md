@@ -19,6 +19,9 @@ Archived changelogs: [November 2026 v0.49.5 Development](docs/changelog/CHANGELO
 
 ### Fixed
 
+- **Initial establishment rollback provenance** — Retention attributes
+  expired snapshots to their verified creation event. Backup restore
+  rejects ambiguous establishment references before writing.
 - **Conversion rollback provenance** — Post-upgrade conversion and native
   intent reconciliation record the exact rollback snapshot ID. Backup
   restore preserves its verified link for later redaction.

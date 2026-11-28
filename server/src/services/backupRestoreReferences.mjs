@@ -1,5 +1,6 @@
 /* Classifarr - Copyright (C) 2024-2026 Classifarr Contributors - GPL-3.0-or-later */
 import { ValidationError } from '../utils/appError.mjs';
+import { validateInitialEstablishmentArchive } from './backupRestoreInitialEstablishmentRefs.mjs';
 
 function invalidReference(field) {
   return new ValidationError(`Invalid backup reference at ${field}. Re-export a complete configuration backup; do not substitute destination database IDs.`);
@@ -93,5 +94,9 @@ export function validateBackupRestoreReferences(data) {
   each('libraryLabels', (row, field) => {
     reference('libraries', row.library_id, `${field}.library_id`);
     reference('labelPresets', row.label_preset_id, `${field}.label_preset_id`);
+  });
+  validateInitialEstablishmentArchive(data, {
+    intentsById: indexes.get('policyIntents'),
+    librariesById: indexes.get('libraries'),
   });
 }

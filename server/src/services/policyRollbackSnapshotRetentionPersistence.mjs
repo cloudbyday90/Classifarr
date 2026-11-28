@@ -7,6 +7,7 @@
  */
 
 import { canonicalDatabaseBigintId } from './databaseIntegerValues.mjs';
+import { INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL } from './policyInitialEstablishmentReceiptProofSql.mjs';
 import {
   CONVERSION_ACTOR_SOURCE_BY_TYPE,
   CONVERSION_CAPTURE_ACTOR_SOURCES,
@@ -68,10 +69,13 @@ async function findRebuildCaptureEvent(client, snapshot, evidence) {
      ) AS reference
      WHERE policy_id = $1
        AND intent_id = $2
+       AND NOT EXISTS (
+         SELECT 1 FROM policy_initial_intent_establishments WHERE rollback_snapshot_id = $4::bigint
+       )
        AND event_type = 'rollback_snapshot_created'
        AND source_version = $3
        AND target_version = $3
-       AND reference.value #>> '{}' = $4::text
+       AND reference.value #>> '{}' = $4::bigint::text
        AND (
          jsonb_typeof(reference.value) = 'string'
          OR ($5::boolean AND jsonb_typeof(reference.value) = 'number')
@@ -98,20 +102,46 @@ async function findRebuildCaptureEvent(client, snapshot, evidence) {
 }
 
 async function findRollbackSnapshotAuditEvent({ client, snapshot }) {
-  if (hasRebuildRollbackAcceptance(snapshot.snapshot_payload)) {
+  const initialPath = snapshot.restore_path?.startsWith('policy/initial-intent-establishment/rollback/') === true;
+  if (!initialPath && hasRebuildRollbackAcceptance(snapshot.snapshot_payload)) {
     const evidence = buildRebuildCaptureEvidence(snapshot.snapshot_payload);
     return evidence ? findRebuildCaptureEvent(client, snapshot, evidence) : null;
   }
 
   const result = await client.query(
-    `SELECT
+    `WITH establishment_claim AS (
+       SELECT policy_id, library_id, intent_id, migration_event_id, state, accepted_by,
+         authority_source_id, request_fingerprint
+       FROM policy_initial_intent_establishments
+       WHERE rollback_snapshot_id = $4::bigint
+     ),
+     audit_candidates AS (
+     SELECT
+       establishment_event.id,
+       establishment_event.actor_type,
+       establishment_event.actor_id,
+       establishment_event.reason_code,
+       NULL::jsonb AS metadata,
+       FALSE AS is_conversion,
+       NULL::text AS capture_snapshot_id,
+       establishment_event.created_at
+     FROM establishment_claim establishment
+     ${INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL}
+     WHERE establishment.state = 'established'
+       AND establishment.policy_id = $1
+       AND establishment.intent_id = $2
+       AND establishment.accepted_by > 0
+       AND $3::integer = 1
+     UNION ALL
+     SELECT
        id,
        actor_type,
        actor_id,
        reason_code,
        metadata,
        capture.is_conversion,
-       metadata ->> 'snapshotId' AS capture_snapshot_id
+       metadata ->> 'snapshotId' AS capture_snapshot_id,
+       created_at
      FROM policy_intent_migration_events
      CROSS JOIN LATERAL (
        SELECT ($8::jsonb ? actor_type::text OR
@@ -125,10 +155,12 @@ async function findRollbackSnapshotAuditEvent({ client, snapshot }) {
      ) AS reference
      WHERE policy_id = $1
        AND intent_id = $2
+       AND NOT EXISTS (SELECT 1 FROM establishment_claim)
+       AND (capture.is_conversion OR NOT $10::boolean)
        AND event_type = 'rollback_snapshot_created'
        AND (capture.is_conversion OR reason_code <> $6)
        AND target_version = $3
-       AND reference.value #>> '{}' = $4::text
+       AND reference.value #>> '{}' = $4::bigint::text
        AND (
          jsonb_typeof(reference.value) = 'string'
          OR ($5::boolean AND jsonb_typeof(reference.value) = 'number')
@@ -138,7 +170,10 @@ async function findRollbackSnapshotAuditEvent({ client, snapshot }) {
          AND (actor_id IS NULL OR actor_id > 0)
          AND $7::text <> '' AND metadata -> 'restorePath' = to_jsonb($7::text)
        ))
-     ORDER BY capture.is_conversion DESC, created_at DESC, id DESC
+     )
+     SELECT id, actor_type, actor_id, reason_code, metadata, is_conversion, capture_snapshot_id
+     FROM audit_candidates
+     ORDER BY is_conversion DESC, created_at DESC, id DESC
      LIMIT 2`,
     [
       snapshot.policy_id,
@@ -150,6 +185,7 @@ async function findRollbackSnapshotAuditEvent({ client, snapshot }) {
       snapshot.restore_path,
       JSON.stringify(CONVERSION_ACTOR_SOURCE_BY_TYPE),
       CONVERSION_CAPTURE_ACTOR_SOURCES,
+      initialPath,
     ]
   );
 

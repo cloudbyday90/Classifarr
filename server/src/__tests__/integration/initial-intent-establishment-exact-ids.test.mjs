@@ -16,6 +16,7 @@ const { registerPolicyInitialIntentEstablishmentReadinessRoutes } = await import
 const { registerPolicyNativeIntentReversionRoutes } = await import('../../routes/policiesRouteNativeIntentReversion.mjs');
 const { registerPolicyWriteRoutes } = await import('../../routes/policiesRoutePolicyWrite.mjs');
 const { loadHeldOutSemanticStudyLifecycleReauditSourceRecord } = await import('../../services/heldOutSemanticStudyLifecycleReauditSource.mjs');
+const { PolicyRollbackSnapshotRetentionService } = await import('../../services/policyRollbackSnapshotRetentionService.mjs');
 
 const logger = { info: jest.fn(), warn: jest.fn(), error: jest.fn() };
 const basePath = '/api/policies';
@@ -165,6 +166,17 @@ test('preserves the BIGINT maximum in native create, replay and readiness', asyn
   expect(original.body.establishment).toMatchObject({ ...ids, replayed: true });
   await expectStoredReceipt(created.body.id, ids);
   await expectReadiness(created.body.id, ids, 'maximum');
+  const { rows: [snapshot] } = await db.query(
+    'SELECT expires_at FROM policy_intent_rollback_snapshots WHERE id = $1', [maximum],
+  );
+  const retention = new PolicyRollbackSnapshotRetentionService({ db, logger, lockKey: 2007 });
+  expect(await retention.cleanup({ now: snapshot.expires_at })).toMatchObject({
+    statusId: 'completed', redactedSnapshotIds: expect.arrayContaining([maximum]),
+  });
+  const { rows } = await db.query(`SELECT
+    snapshot_payload #> '{retention_marker,source_audit,migration_event_id}' AS verified_event_id
+    FROM policy_intent_rollback_snapshots WHERE id = $1`, [maximum]);
+  expect(rows).toEqual([{ verified_event_id: maximum }]);
 });
 
 test.each([

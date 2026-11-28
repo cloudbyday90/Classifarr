@@ -10,6 +10,7 @@
 
 import { NATIVE_INTENT_CHANGE_LIFECYCLE_PROOF_SQL } from './policyNativeIntentChangeReceiptBindingSql.mjs';
 import { LIBRARY_REBUILD_LIFECYCLE_PROOF_SQL } from './policyLibraryRebuildLifecycleProofSql.mjs';
+import { INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL } from './policyInitialEstablishmentReceiptProofSql.mjs';
 
 export const POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS = Object.freeze({
   INITIAL_INTENT_ESTABLISHMENT: 'initial_intent_establishment',
@@ -66,24 +67,7 @@ export function buildPolicyPurposeLifecycleReceiptSourceCtesSql({ scope } = {}) 
          '${POLICY_PURPOSE_LIFECYCLE_TRANSITION_IDS.INITIAL_INTENT_ESTABLISHMENT}'::TEXT
            AS lifecycle_transition
        FROM policy_initial_intent_establishments establishment
-       JOIN policy_intents established_intent
-         ON established_intent.id = establishment.intent_id
-        AND established_intent.policy_id = establishment.policy_id
-        AND established_intent.library_id = establishment.library_id
-        AND established_intent.intent_version = 1
-        AND established_intent.source = 'native_intent'
-       JOIN policy_intent_migration_events establishment_event
-         ON establishment_event.id = establishment.migration_event_id
-        AND establishment_event.intent_id = established_intent.id
-        AND establishment_event.policy_id = establishment.policy_id
-        AND establishment_event.event_type = 'initial_intent_established'
-        AND establishment_event.actor_type = 'operator'
-        AND establishment_event.actor_id = establishment.accepted_by
-        AND establishment_event.reason_code = 'operator_declared_initial_intent'
-        AND establishment_event.source_version IS NULL
-        AND establishment_event.target_version = established_intent.intent_version
-        AND establishment_event.metadata -> 'authority_source_id' = to_jsonb(establishment.authority_source_id::text)
-        AND establishment_event.metadata -> 'request_fingerprint' = to_jsonb(establishment.request_fingerprint::text)
+       ${INITIAL_ESTABLISHMENT_RECEIPT_PROOF_JOINS_SQL}
        ${initialScopeJoin}
        WHERE establishment.state = 'established'
        ${recentWindowSql(normalizedScope, 'establishment.established_at', 'establishment.id')}
